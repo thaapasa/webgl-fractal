@@ -13,6 +13,7 @@ import { InputHandler } from '../controls/InputHandler';
 // Import shader sources
 import vertexShaderSource from '../renderer/shaders/mandelbrot.vert.glsl?raw';
 import fragmentShaderSource from '../renderer/shaders/mandelbrot.frag.glsl?raw';
+import aaPostFragmentSource from '../renderer/shaders/aa-post.frag.glsl?raw';
 
 /** Base iterations at zoom 1; scaled up with log(zoom) for deeper zooms. */
 const MAX_ITERATIONS_BASE = 256;
@@ -35,6 +36,7 @@ function maxIterationsForZoom(zoom: number): number {
 export class FractalEngine {
   private renderer: WebGLRenderer;
   private shaderProgram: ShaderProgram;
+  private postProcessProgram: ShaderProgram;
   private viewState: ViewState;
   private inputHandler: InputHandler;
 
@@ -44,7 +46,12 @@ export class FractalEngine {
   /** Overlay showing zoom and iteration count (for debugging). */
   private debugOverlay: HTMLElement | null = null;
 
-  // Fullscreen quad geometry (two triangles)
+  /** Render-to-texture: FBO and texture for Mandelbrot pass. */
+  private fbo: WebGLFramebuffer | null = null;
+  private renderTarget: WebGLTexture | null = null;
+  private rtWidth = 0;
+  private rtHeight = 0;
+
   private quadBuffer: WebGLBuffer | null = null;
 
   constructor(canvas: HTMLCanvasElement) {
@@ -54,15 +61,19 @@ export class FractalEngine {
     // Initialize view state
     this.viewState = new ViewState();
 
-    // Compile shaders
     this.shaderProgram = new ShaderProgram(
       this.renderer.gl,
       vertexShaderSource,
       fragmentShaderSource
     );
+    this.postProcessProgram = new ShaderProgram(
+      this.renderer.gl,
+      vertexShaderSource,
+      aaPostFragmentSource
+    );
 
-    // Create fullscreen quad
     this.setupGeometry();
+    this.setupRenderTarget();
 
     // Setup input handler
     this.inputHandler = new InputHandler(canvas, this.viewState, () => {
@@ -114,29 +125,51 @@ export class FractalEngine {
 
   private handleResize(): void {
     this.renderer.resize(window.innerWidth, window.innerHeight);
+    this.ensureRenderTargetSize();
     this.render();
+  }
+
+  private setupRenderTarget(): void {
+    const gl = this.renderer.gl;
+    this.fbo = gl.createFramebuffer();
+    this.renderTarget = gl.createTexture();
+  }
+
+  private ensureRenderTargetSize(): void {
+    const gl = this.renderer.gl;
+    const w = this.renderer.canvas.width;
+    const h = this.renderer.canvas.height;
+    if (w < 1 || h < 1) return;
+    if (w === this.rtWidth && h === this.rtHeight) return;
+    this.rtWidth = w;
+    this.rtHeight = h;
+
+    gl.bindTexture(gl.TEXTURE_2D, this.renderTarget);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.bindTexture(gl.TEXTURE_2D, null);
+
+    gl.bindFramebuffer(gl.FRAMEBUFFER, this.fbo);
+    gl.framebufferTexture2D(
+      gl.FRAMEBUFFER,
+      gl.COLOR_ATTACHMENT0,
+      gl.TEXTURE_2D,
+      this.renderTarget,
+      0
+    );
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   }
 
   private render(): void {
     const gl = this.renderer.gl;
-
-    // Clear
-    this.renderer.clear(0.05, 0.05, 0.1, 1.0);
-
-    // Use shader program
-    this.shaderProgram.use();
-
-    // Set uniforms
-    this.shaderProgram.setUniform('u_resolution', [
-      this.renderer.canvas.width,
-      this.renderer.canvas.height,
-    ]);
-    this.shaderProgram.setUniform('u_center', [this.viewState.centerX, this.viewState.centerY]);
-    this.shaderProgram.setUniform('u_zoom', this.viewState.zoom);
+    const w = this.renderer.canvas.width;
+    const h = this.renderer.canvas.height;
     const maxIter =
       this.maxIterationsOverride ??
       maxIterationsForZoom(this.viewState.zoom);
-    this.shaderProgram.setUniformInt('u_maxIterations', maxIter);
 
     if (this.debugOverlay) {
       const z = this.viewState.zoom;
@@ -144,17 +177,40 @@ export class FractalEngine {
       this.debugOverlay.textContent = `zoom ${zoomStr}  ·  iterations ${maxIter}`;
     }
 
-    // Color scheme (blue to purple gradient)
+    // Pass 1: render Mandelbrot to texture
+    gl.bindFramebuffer(gl.FRAMEBUFFER, this.fbo);
+    gl.viewport(0, 0, w, h);
+    this.renderer.clear(0, 0, 0, 1);
+
+    this.shaderProgram.use();
+    this.shaderProgram.setUniform('u_resolution', [w, h]);
+    this.shaderProgram.setUniform('u_center', [this.viewState.centerX, this.viewState.centerY]);
+    this.shaderProgram.setUniform('u_zoom', this.viewState.zoom);
+    this.shaderProgram.setUniformInt('u_maxIterations', maxIter);
     this.shaderProgram.setUniform('u_colorA', [0.0, 0.1, 0.3]);
     this.shaderProgram.setUniform('u_colorB', [0.5, 0.2, 0.8]);
     this.shaderProgram.setUniform('u_time', performance.now() * 0.001);
 
-    // Bind and draw quad
     gl.bindBuffer(gl.ARRAY_BUFFER, this.quadBuffer);
-    const positionLocation = 0; // Matches layout(location = 0) in vertex shader
+    const positionLocation = 0;
     gl.enableVertexAttribArray(positionLocation);
     gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
+    gl.drawArrays(gl.TRIANGLES, 0, 6);
 
+    // Pass 2: AA post-process to screen
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    gl.viewport(0, 0, w, h);
+    this.renderer.clear(0.05, 0.05, 0.1, 1);
+
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, this.renderTarget);
+    this.postProcessProgram.use();
+    this.postProcessProgram.setUniformInt('u_tex', 0);
+    this.postProcessProgram.setUniform('u_resolution', [w, h]);
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.quadBuffer);
+    gl.enableVertexAttribArray(positionLocation);
+    gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
     gl.drawArrays(gl.TRIANGLES, 0, 6);
   }
 
@@ -201,9 +257,11 @@ export class FractalEngine {
     this.debugOverlay = null;
     this.inputHandler.destroy();
     this.shaderProgram.destroy();
+    this.postProcessProgram.destroy();
+    const gl = this.renderer.gl;
+    if (this.fbo) gl.deleteFramebuffer(this.fbo);
+    if (this.renderTarget) gl.deleteTexture(this.renderTarget);
     this.renderer.destroy();
-    if (this.quadBuffer) {
-      this.renderer.gl.deleteBuffer(this.quadBuffer);
-    }
+    if (this.quadBuffer) gl.deleteBuffer(this.quadBuffer);
   }
 }
