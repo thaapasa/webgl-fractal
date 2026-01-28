@@ -33,23 +33,20 @@ npm run build
 npm run preview   # optional: serve the built app locally
 ```
 
-**Build for the `examples/` folder** (e.g. to commit a static build for GitHub Pages):
+**Build for the `examples/` folder:**
 
 ```bash
 npm run build:examples
 ```
 
-Output goes to `examples/`. Use `base: ./` so it works when served from a subpath (e.g. `https://<user>.github.io/webgl-fractal/examples/`).
+Output goes to `examples/`.
 
 ---
 
 ## Live Example
 
-A static build lives in **[examples/](./examples/)**. To preview it:
-
-1. Run `npm run build:examples`, then `npx serve examples` (or any static server), and open the URL.
-2. **GitHub Pages:** Enable [Pages](https://docs.github.com/en/pages) (source: branch root), then open  
-   `https://<your-username>.github.io/webgl-fractal/examples/`.
+**[Fractal Explorer](https://thaapasa.github.io/webgl-fractal/examples/)** — try it in the browser.  
+A static build also lives in [examples/](./examples/); run `npm run build:examples` then `npx serve examples` to preview locally.
 
 ---
 
