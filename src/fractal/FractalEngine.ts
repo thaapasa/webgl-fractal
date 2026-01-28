@@ -107,6 +107,7 @@ export class FractalEngine {
     // Color scheme (blue to purple gradient)
     this.shaderProgram.setUniform('u_colorA', [0.0, 0.1, 0.3]);
     this.shaderProgram.setUniform('u_colorB', [0.5, 0.2, 0.8]);
+    this.shaderProgram.setUniform('u_time', performance.now() * 0.001);
 
     // Bind and draw quad
     gl.bindBuffer(gl.ARRAY_BUFFER, this.quadBuffer);
