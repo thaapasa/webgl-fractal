@@ -26,7 +26,6 @@ export class InputHandler {
   private lastX = 0;
   private lastY = 0;
   private lastTouchDistance = 0;
-  private lastTouchCenter: [number, number] = [0, 0];
 
   constructor(
     canvas: HTMLCanvasElement,
@@ -158,7 +157,6 @@ export class InputHandler {
       // Two touches - prepare for pinch zoom
       this.isDragging = false;
       this.lastTouchDistance = this.getTouchDistance(e.touches);
-      this.lastTouchCenter = this.getTouchCenter(e.touches);
     }
   }
 
@@ -191,7 +189,6 @@ export class InputHandler {
       }
 
       this.lastTouchDistance = distance;
-      this.lastTouchCenter = center;
     }
   }
 
