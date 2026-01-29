@@ -46,8 +46,23 @@ export class FractalEngine {
   /** When set, overrides zoom-based max iterations. */
   private maxIterationsOverride: number | null = null;
 
+  /** Color palette index (0-11). */
+  private paletteIndex = 0;
+  /** Color offset for shifting the color cycle. */
+  private colorOffset = 0.0;
+  /** Number of available palettes. */
+  private static readonly PALETTE_COUNT = 12;
+  /** Palette names for display. */
+  private static readonly PALETTE_NAMES = [
+    'Rainbow', 'Blue', 'Gold', 'Grayscale', 'Fire', 'Ice',
+    'Sepia', 'Ocean', 'Purple', 'Forest', 'Sunset', 'Electric'
+  ];
+
   /** Overlay showing zoom and iteration count (for debugging). */
   private debugOverlay: HTMLElement | null = null;
+
+  /** Whether post-process antialiasing is enabled. */
+  private aaEnabled = false;
 
   /** Render-to-texture: FBO and texture for Mandelbrot pass. */
   private fbo: WebGLFramebuffer | null = null;
@@ -90,6 +105,19 @@ export class FractalEngine {
     });
     this.inputHandler.setIterationResetCallback(() => {
       this.clearMaxIterationsOverride();
+    });
+
+    // Wire up keyboard color controls
+    this.inputHandler.setPaletteCycleCallback((direction) => {
+      this.cyclePalette(direction);
+    });
+    this.inputHandler.setColorOffsetCallback((delta) => {
+      this.adjustColorOffset(delta);
+    });
+
+    // Wire up AA toggle
+    this.inputHandler.setToggleAACallback(() => {
+      this.toggleAA();
     });
 
     // Debug overlay: zoom + iterations
@@ -186,11 +214,17 @@ export class FractalEngine {
       const z = this.viewState.zoom;
       const zoomStr = z >= 1e6 ? z.toExponential(2) : z < 1 ? z.toPrecision(4) : String(Math.round(z));
       const iterSuffix = this.maxIterationsOverride !== null ? ' (manual)' : '';
-      this.debugOverlay.textContent = `zoom ${zoomStr}  ·  iterations ${maxIter}${iterSuffix}`;
+      const paletteName = FractalEngine.PALETTE_NAMES[this.paletteIndex];
+      const aaStatus = this.aaEnabled ? 'AA' : '';
+      this.debugOverlay.textContent = `zoom ${zoomStr}  ·  iterations ${maxIter}${iterSuffix}  ·  ${paletteName}${aaStatus ? '  ·  ' + aaStatus : ''}`;
     }
 
-    // Pass 1: render Mandelbrot to texture
-    gl.bindFramebuffer(gl.FRAMEBUFFER, this.fbo);
+    // Pass 1: render Mandelbrot (to texture if AA enabled, directly to screen if not)
+    if (this.aaEnabled) {
+      gl.bindFramebuffer(gl.FRAMEBUFFER, this.fbo);
+    } else {
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    }
     gl.viewport(0, 0, w, h);
     this.renderer.clear(0, 0, 0, 1);
 
@@ -199,9 +233,9 @@ export class FractalEngine {
     this.shaderProgram.setUniform('u_center', [this.viewState.centerX, this.viewState.centerY]);
     this.shaderProgram.setUniform('u_zoom', this.viewState.zoom);
     this.shaderProgram.setUniformInt('u_maxIterations', maxIter);
-    this.shaderProgram.setUniform('u_colorA', [0.0, 0.1, 0.3]);
-    this.shaderProgram.setUniform('u_colorB', [0.5, 0.2, 0.8]);
     this.shaderProgram.setUniform('u_time', performance.now() * 0.001);
+    this.shaderProgram.setUniformInt('u_paletteIndex', this.paletteIndex);
+    this.shaderProgram.setUniform('u_colorOffset', this.colorOffset);
 
     gl.bindBuffer(gl.ARRAY_BUFFER, this.quadBuffer);
     const positionLocation = 0;
@@ -209,21 +243,23 @@ export class FractalEngine {
     gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
     gl.drawArrays(gl.TRIANGLES, 0, 6);
 
-    // Pass 2: AA post-process to screen
-    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-    gl.viewport(0, 0, w, h);
-    this.renderer.clear(0.05, 0.05, 0.1, 1);
+    // Pass 2: AA post-process to screen (only if AA enabled)
+    if (this.aaEnabled) {
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+      gl.viewport(0, 0, w, h);
+      this.renderer.clear(0.05, 0.05, 0.1, 1);
 
-    gl.activeTexture(gl.TEXTURE0);
-    gl.bindTexture(gl.TEXTURE_2D, this.renderTarget);
-    this.postProcessProgram.use();
-    this.postProcessProgram.setUniformInt('u_tex', 0);
-    this.postProcessProgram.setUniform('u_resolution', [w, h]);
+      gl.activeTexture(gl.TEXTURE0);
+      gl.bindTexture(gl.TEXTURE_2D, this.renderTarget);
+      this.postProcessProgram.use();
+      this.postProcessProgram.setUniformInt('u_tex', 0);
+      this.postProcessProgram.setUniform('u_resolution', [w, h]);
 
-    gl.bindBuffer(gl.ARRAY_BUFFER, this.quadBuffer);
-    gl.enableVertexAttribArray(positionLocation);
-    gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
-    gl.drawArrays(gl.TRIANGLES, 0, 6);
+      gl.bindBuffer(gl.ARRAY_BUFFER, this.quadBuffer);
+      gl.enableVertexAttribArray(positionLocation);
+      gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
+      gl.drawArrays(gl.TRIANGLES, 0, 6);
+    }
   }
 
   /**
@@ -270,6 +306,40 @@ export class FractalEngine {
    */
   clearMaxIterationsOverride(): void {
     this.maxIterationsOverride = null;
+    this.render();
+  }
+
+  /**
+   * Toggle antialiasing post-process on/off.
+   */
+  toggleAA(): void {
+    this.aaEnabled = !this.aaEnabled;
+    this.render();
+  }
+
+  /**
+   * Cycle to the next color palette.
+   * @param direction 1 for next, -1 for previous
+   */
+  cyclePalette(direction: 1 | -1 = 1): void {
+    this.paletteIndex = (this.paletteIndex + direction + FractalEngine.PALETTE_COUNT) % FractalEngine.PALETTE_COUNT;
+    this.render();
+  }
+
+  /**
+   * Adjust the color offset to shift the color cycle.
+   * @param delta Amount to shift (positive = forward, negative = backward)
+   */
+  adjustColorOffset(delta: number): void {
+    this.colorOffset += delta;
+    this.render();
+  }
+
+  /**
+   * Reset color offset to zero.
+   */
+  resetColorOffset(): void {
+    this.colorOffset = 0.0;
     this.render();
   }
 

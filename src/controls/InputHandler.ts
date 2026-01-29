@@ -10,6 +10,9 @@ import { ViewState } from './ViewState';
 export type ViewStateChangeCallback = (viewState: ViewState) => void;
 export type IterationAdjustCallback = (direction: 1 | -1) => void;
 export type IterationResetCallback = () => void;
+export type PaletteCycleCallback = (direction: 1 | -1) => void;
+export type ColorOffsetCallback = (delta: number) => void;
+export type ToggleCallback = () => void;
 
 /** Zoom sensitivity: 1 = full speed, 0.6 = 60% of current zoom deltas */
 const ZOOM_SENSITIVITY = 0.6;
@@ -24,6 +27,9 @@ export class InputHandler {
   private onChange: ViewStateChangeCallback;
   private onIterationAdjust: IterationAdjustCallback | null = null;
   private onIterationReset: IterationResetCallback | null = null;
+  private onPaletteCycle: PaletteCycleCallback | null = null;
+  private onColorOffset: ColorOffsetCallback | null = null;
+  private onToggleAA: ToggleCallback | null = null;
 
   // Mouse/touch state
   private isDragging = false;
@@ -55,6 +61,27 @@ export class InputHandler {
    */
   setIterationResetCallback(callback: IterationResetCallback): void {
     this.onIterationReset = callback;
+  }
+
+  /**
+   * Set callback for palette cycling (c/C keys)
+   */
+  setPaletteCycleCallback(callback: PaletteCycleCallback): void {
+    this.onPaletteCycle = callback;
+  }
+
+  /**
+   * Set callback for color offset adjustment ([/] keys)
+   */
+  setColorOffsetCallback(callback: ColorOffsetCallback): void {
+    this.onColorOffset = callback;
+  }
+
+  /**
+   * Set callback for AA toggle (a key)
+   */
+  setToggleAACallback(callback: ToggleCallback): void {
+    this.onToggleAA = callback;
   }
 
   private setupEventListeners(): void {
@@ -239,6 +266,39 @@ export class InputHandler {
       case '0':
         e.preventDefault();
         this.onIterationReset?.();
+        break;
+      case 'c':
+        e.preventDefault();
+        this.onPaletteCycle?.(1);
+        break;
+      case 'C':
+        e.preventDefault();
+        this.onPaletteCycle?.(-1);
+        break;
+      case '[':
+      case ',':
+        e.preventDefault();
+        this.onColorOffset?.(-0.1);
+        break;
+      case ']':
+      case '.':
+        e.preventDefault();
+        this.onColorOffset?.(0.1);
+        break;
+      case '{':
+      case '<':
+        e.preventDefault();
+        this.onColorOffset?.(-0.5);
+        break;
+      case '}':
+      case '>':
+        e.preventDefault();
+        this.onColorOffset?.(0.5);
+        break;
+      case 'a':
+      case 'A':
+        e.preventDefault();
+        this.onToggleAA?.();
         break;
     }
   }

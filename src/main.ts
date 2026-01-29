@@ -37,6 +37,10 @@ function init(): void {
     console.log('  - Pinch to zoom (mobile)');
     console.log('  - + / - to adjust max iterations');
     console.log('  - 0 to reset iterations to auto-scaling');
+    console.log('  - c / C to cycle color palettes (forward/backward)');
+    console.log('  - , / . to shift colors (fine)');
+    console.log('  - < / > to shift colors (coarse)');
+    console.log('  - a to toggle antialiasing');
   } catch (error) {
     console.error('Failed to initialize Fractal Explorer:', error);
     app.innerHTML = `
