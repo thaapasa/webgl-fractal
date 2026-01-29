@@ -6,3 +6,4 @@ out
 *.log
 /.gradle
 node_modules
+dist
