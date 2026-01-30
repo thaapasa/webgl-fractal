@@ -106,6 +106,33 @@ export class ViewState implements IViewState {
   }
 
   /**
+   * Center on a screen point and then zoom in
+   * @param screenX Screen X coordinate (0 to screenWidth)
+   * @param screenY Screen Y coordinate (0 to screenHeight)
+   * @param factor Zoom factor (> 1 = zoom in, < 1 = zoom out)
+   * @param screenWidth Screen width in pixels
+   * @param screenHeight Screen height in pixels
+   */
+  zoomToPoint(
+    screenX: number,
+    screenY: number,
+    factor: number,
+    screenWidth: number,
+    screenHeight: number
+  ): void {
+    // Convert screen point to fractal coordinates and center on it
+    const [fractalX, fractalY] = this.toFractalCoords(screenX, screenY, screenWidth, screenHeight);
+    this.centerX = fractalX;
+    this.centerY = fractalY;
+
+    // Apply zoom
+    this.zoom *= factor;
+
+    // Clamp zoom to reasonable limits
+    this.zoom = Math.max(0.1, Math.min(this.zoom, 1e15));
+  }
+
+  /**
    * Reset to initial view
    */
   reset(): void {

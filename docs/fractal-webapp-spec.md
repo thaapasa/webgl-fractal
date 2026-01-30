@@ -18,7 +18,7 @@ _- Colonel Joe Bishop_
 | Color schemes                       | ✅ Done (12 palettes!)                                        |
 | Multiple fractal types              | ✅ Done (Mandelbrot, Burning Ship, Julia, Burning Ship Julia) |
 | Julia sets                          | ✅ Done (with interactive picker mode!)                       |
-| URL bookmarking                     | 🔲 Not yet                                                   |
+| URL bookmarking                     | ✅ Done (shareable links + 9 famous locations)                |
 | Tourist mode                        | 🔲 Not yet                                                   |
 | Offline support                     | 🔲 Not yet                                                   |
 
@@ -202,14 +202,14 @@ How do we know if we've succeeded?
 - Smooth performance at 60 FPS ✅ (already done)
 - Touch controls for mobile ✅ (already done)
 - Multiple color schemes ✅ (already done)
-- Share/bookmark functionality 🔲
+- Share/bookmark functionality ✅ (URL sharing + famous locations)
 
 ### Phase 3: Polish and Expand
 
-- Multiple fractal types (Julia sets, Burning Ship)
-- Tourist mode auto-exploration
-- Advanced settings for power users
-- Offline support
+- Multiple fractal types (Julia sets, Burning Ship) ✅ (all 4 types done)
+- Tourist mode auto-exploration 🔲
+- Advanced settings for power users ✅ (help overlay, iteration controls)
+- Offline support 🔲
 
 ### Phase 4: The Extra Mile
 
@@ -255,9 +255,9 @@ out, Skippy."_
 
 ---
 
-**Document Version:** 1.1
+**Document Version:** 1.2
 **Author:** Colonel Joe Bishop (ideas) + Skippy (implementation)
-**Status:** Phase 1 complete, Phase 2 in progress
+**Status:** Phase 1 & 2 complete, Phase 3 in progress
 **Last Updated:** January 2026
 **Related:**
 - [architecture.md](./architecture.md) — System architecture

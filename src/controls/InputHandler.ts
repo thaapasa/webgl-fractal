@@ -17,6 +17,8 @@ export type FractalCycleCallback = (direction: 1 | -1) => void;
 export type JuliaPickCallback = (fractalX: number, fractalY: number) => void;
 export type ShareCallback = () => void;
 export type LocationCallback = (key: string) => void;
+export type HelpToggleCallback = () => void;
+export type ScreenshotModeCallback = () => void;
 
 /** Zoom sensitivity: 1 = full speed, 0.6 = 60% of current zoom deltas */
 const ZOOM_SENSITIVITY = 0.6;
@@ -40,6 +42,8 @@ export class InputHandler {
   private onJuliaPick: JuliaPickCallback | null = null;
   private onShare: ShareCallback | null = null;
   private onLocationSelect: LocationCallback | null = null;
+  private onToggleHelp: HelpToggleCallback | null = null;
+  private onToggleScreenshotMode: ScreenshotModeCallback | null = null;
 
   // Mouse/touch state
   private isDragging = false;
@@ -137,6 +141,20 @@ export class InputHandler {
    */
   setLocationSelectCallback(callback: LocationCallback): void {
     this.onLocationSelect = callback;
+  }
+
+  /**
+   * Set callback for help overlay toggle (h key)
+   */
+  setToggleHelpCallback(callback: HelpToggleCallback): void {
+    this.onToggleHelp = callback;
+  }
+
+  /**
+   * Set callback for screenshot mode toggle (space key)
+   */
+  setToggleScreenshotModeCallback(callback: ScreenshotModeCallback): void {
+    this.onToggleScreenshotMode = callback;
   }
 
   /**
@@ -252,7 +270,7 @@ export class InputHandler {
   private handleDoubleClick(e: MouseEvent): void {
     const [x, y] = this.getScreenCoords(e.clientX, e.clientY);
     const [width, height] = this.getCanvasSize();
-    this.viewState.zoomAt(x, y, scaleZoomFactor(2.0), width, height);
+    this.viewState.zoomToPoint(x, y, scaleZoomFactor(2.0), width, height);
     this.notifyChange();
   }
 
@@ -414,6 +432,15 @@ export class InputHandler {
       case '9':
         e.preventDefault();
         this.onLocationSelect?.(e.key);
+        break;
+      case 'h':
+      case 'H':
+        e.preventDefault();
+        this.onToggleHelp?.();
+        break;
+      case ' ':
+        e.preventDefault();
+        this.onToggleScreenshotMode?.();
         break;
     }
   }

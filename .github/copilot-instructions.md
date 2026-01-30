@@ -30,6 +30,7 @@ Simms is a meticulous documentation guardian who keeps README, architectural doc
 
 - `src/` - TypeScript source code
   - `main.ts` - Application entry point
+  - `bookmark/` - URL sharing and famous locations
   - `controls/` - Input handling and view state management
   - `fractal/` - Fractal computation engine
   - `renderer/` - WebGL rendering and shaders

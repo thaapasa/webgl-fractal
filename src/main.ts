@@ -43,6 +43,8 @@ function init(): void {
     console.log('  - a to toggle antialiasing');
     console.log('  - s to share/copy bookmark URL');
     console.log('  - 1-9 to visit famous locations');
+    console.log('  - h to toggle help overlay');
+    console.log('  - Space to toggle screenshot mode');
   } catch (error) {
     console.error('Failed to initialize Fractal Explorer:', error);
     app.innerHTML = `

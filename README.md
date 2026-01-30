@@ -68,8 +68,32 @@ A static build also lives in [examples/](./examples/); run `npm run build:exampl
 | **<** / **>**    | Shift colors (coarse)                  |
 | **r**            | Reset color offset                     |
 | **a**            | Toggle antialiasing                    |
+| **1–9**          | Jump to famous locations               |
+| **s**            | Copy shareable link to clipboard       |
+| **h**            | Toggle help overlay                    |
+| **Space**        | Toggle screenshot mode (hides UI)      |
 
 Zoom centers on where you're pointing. Not the center of the screen. Because that would be stupid.
+
+### Famous Locations
+
+Press number keys **1–9** to instantly visit curated fractal locations:
+
+| Key | Location             | Fractal            |
+|-----|----------------------|--------------------|
+| 1   | Seahorse Valley      | Mandelbrot         |
+| 2   | Elephant Valley      | Mandelbrot         |
+| 3   | Double Spiral Valley | Mandelbrot         |
+| 4   | Spiral Galaxy        | Mandelbrot         |
+| 5   | The Armada           | Burning Ship       |
+| 6   | Douady Rabbit        | Julia              |
+| 7   | Dragon Julia         | Julia              |
+| 8   | Lightning Julia      | Julia              |
+| 9   | Burning Ship Julia   | Burning Ship Julia |
+
+### Link Sharing
+
+Press **s** to copy a shareable URL to your clipboard. The URL encodes your current position, zoom level, fractal type, color palette, and all settings. Paste the URL to share your exact view with others—or bookmark it to return later.
 
 ### Fractal Types
 
@@ -103,12 +127,16 @@ WebGL 2, not WebGPU. Better browser support, plenty fast for this. I’ve alread
 src/
 ├── main.ts                 # Entry point. Where the magic begins.
 ├── types.ts                # Type definitions (because type safety)
+├── bookmark/
+│   ├── BookmarkManager.ts  # URL-based state sharing
+│   └── famousLocations.ts  # Curated famous fractal spots
 ├── renderer/
 │   ├── WebGLRenderer.ts    # WebGL context, canvas, render loop
 │   ├── ShaderProgram.ts    # Shader compile/link, uniforms
 │   └── shaders/
 │       ├── mandelbrot.vert.glsl   # Fullscreen quad
-│       └── mandelbrot.frag.glsl   # The actual Mandelbrot math
+│       ├── mandelbrot.frag.glsl   # The actual Mandelbrot math
+│       └── aa-post.frag.glsl      # Antialiasing post-process
 ├── fractal/
 │   └── FractalEngine.ts    # Orchestrates everything
 └── controls/

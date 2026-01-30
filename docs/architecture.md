@@ -88,6 +88,10 @@ The central orchestrator that ties all components together.
 - **12 color palettes**: Selectable via `c`/`C` keys
 - **Color offset**: Shift the color cycle with `,`/`.` keys
 - **Optional antialiasing**: Toggle with `a` key (two-pass render)
+- **Famous locations**: 9 curated fractal spots accessible via number keys `1`–`9`
+- **URL bookmarking**: Share views via URL hash parameters (`s` to copy link)
+- **Help overlay**: In-app keyboard shortcut reference (`h` to toggle)
+- **Screenshot mode**: Hide all UI for clean screenshots (`Space` to toggle)
 - **Debug overlay**: Shows current fractal type, zoom level, iteration count, palette name, and Julia constant (when applicable)
 
 **Render Pipeline:**
@@ -185,6 +189,56 @@ Translates browser events into view state changes.
 | `<` / `>`    | Shift color offset coarse            |
 | `r`          | Reset color offset                   |
 | `a`          | Toggle antialiasing                  |
+| `1`–`9`      | Jump to famous locations             |
+| `s`          | Copy shareable URL to clipboard      |
+| `h`          | Toggle help overlay                  |
+| `Space`      | Toggle screenshot mode               |
+
+### 7. Bookmark Manager (`src/bookmark/BookmarkManager.ts`)
+
+Handles URL-based state persistence and sharing.
+
+**Responsibilities:**
+
+- Encodes application state into compact URL hash parameters
+- Decodes state from URL hash on page load
+- Updates browser URL without triggering navigation
+- Copies shareable URLs to clipboard
+
+**URL Parameters:**
+
+| Param | Full Name    | Description                      |
+|-------|--------------|----------------------------------|
+| `t`   | type         | Fractal type (0–3)               |
+| `x`   | centerX      | View center X coordinate         |
+| `y`   | centerY      | View center Y coordinate         |
+| `z`   | zoom         | Zoom level                       |
+| `p`   | palette      | Color palette index (0–11)       |
+| `o`   | colorOffset  | Color cycle offset               |
+| `jr`  | juliaReal    | Julia constant real component    |
+| `ji`  | juliaImag    | Julia constant imaginary component|
+| `i`   | iterations   | Max iterations override          |
+| `aa`  | antialiasing | AA enabled (1 if true)           |
+
+### 8. Famous Locations (`src/bookmark/famousLocations.ts`)
+
+Curated collection of interesting fractal coordinates.
+
+**Available Locations:**
+
+| Key | Name                 | Fractal Type       |
+|-----|----------------------|--------------------|
+| 1   | Seahorse Valley      | Mandelbrot         |
+| 2   | Elephant Valley      | Mandelbrot         |
+| 3   | Double Spiral Valley | Mandelbrot         |
+| 4   | Spiral Galaxy        | Mandelbrot         |
+| 5   | The Armada           | Burning Ship       |
+| 6   | Douady Rabbit        | Julia              |
+| 7   | Dragon Julia         | Julia              |
+| 8   | Lightning Julia      | Julia              |
+| 9   | Burning Ship Julia   | Burning Ship Julia |
+
+Each location stores complete `BookmarkState` including position, zoom, fractal type, palette, color offset, and iteration settings.
 
 ---
 
@@ -333,6 +387,9 @@ maxIter = BASE + SCALE × log₁₀(zoom)^POWER
 src/
 ├── main.ts                     # Application entry point
 ├── types.ts                    # TypeScript type definitions
+├── bookmark/
+│   ├── BookmarkManager.ts      # URL-based state sharing
+│   └── famousLocations.ts      # Curated famous fractal spots (keys 1-9)
 ├── controls/
 │   ├── InputHandler.ts         # Mouse, touch, keyboard events
 │   └── ViewState.ts            # Pan/zoom state management
