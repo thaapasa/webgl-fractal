@@ -15,6 +15,8 @@ export type ColorOffsetCallback = (delta: number) => void;
 export type ToggleCallback = () => void;
 export type FractalCycleCallback = (direction: 1 | -1) => void;
 export type JuliaPickCallback = (fractalX: number, fractalY: number) => void;
+export type ShareCallback = () => void;
+export type LocationCallback = (key: string) => void;
 
 /** Zoom sensitivity: 1 = full speed, 0.6 = 60% of current zoom deltas */
 const ZOOM_SENSITIVITY = 0.6;
@@ -36,6 +38,8 @@ export class InputHandler {
   private onFractalCycle: FractalCycleCallback | null = null;
   private onToggleJuliaMode: ToggleCallback | null = null;
   private onJuliaPick: JuliaPickCallback | null = null;
+  private onShare: ShareCallback | null = null;
+  private onLocationSelect: LocationCallback | null = null;
 
   // Mouse/touch state
   private isDragging = false;
@@ -119,6 +123,20 @@ export class InputHandler {
    */
   setJuliaPickCallback(callback: JuliaPickCallback): void {
     this.onJuliaPick = callback;
+  }
+
+  /**
+   * Set callback for share/bookmark (s key)
+   */
+  setShareCallback(callback: ShareCallback): void {
+    this.onShare = callback;
+  }
+
+  /**
+   * Set callback for famous location selection (1-9 keys)
+   */
+  setLocationSelectCallback(callback: LocationCallback): void {
+    this.onLocationSelect = callback;
   }
 
   /**
@@ -379,6 +397,23 @@ export class InputHandler {
       case 'J':
         e.preventDefault();
         this.onToggleJuliaMode?.();
+        break;
+      case 's':
+      case 'S':
+        e.preventDefault();
+        this.onShare?.();
+        break;
+      case '1':
+      case '2':
+      case '3':
+      case '4':
+      case '5':
+      case '6':
+      case '7':
+      case '8':
+      case '9':
+        e.preventDefault();
+        this.onLocationSelect?.(e.key);
         break;
     }
   }

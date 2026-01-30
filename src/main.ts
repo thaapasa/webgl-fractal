@@ -41,6 +41,8 @@ function init(): void {
     console.log('  - , / . to shift colors (fine)');
     console.log('  - < / > to shift colors (coarse)');
     console.log('  - a to toggle antialiasing');
+    console.log('  - s to share/copy bookmark URL');
+    console.log('  - 1-9 to visit famous locations');
   } catch (error) {
     console.error('Failed to initialize Fractal Explorer:', error);
     app.innerHTML = `

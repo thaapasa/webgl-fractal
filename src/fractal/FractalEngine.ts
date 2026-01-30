@@ -10,6 +10,13 @@ import { ShaderProgram } from '../renderer/ShaderProgram';
 import { ViewState } from '../controls/ViewState';
 import { InputHandler } from '../controls/InputHandler';
 import { FractalType, FRACTAL_TYPE_NAMES } from '../types';
+import {
+  BookmarkState,
+  readUrlBookmark,
+  updateUrlHash,
+  copyShareableUrl,
+} from '../bookmark/BookmarkManager';
+import { getLocationByKey } from '../bookmark/famousLocations';
 
 // Import shader sources
 import vertexShaderSource from '../renderer/shaders/mandelbrot.vert.glsl?raw';
@@ -18,6 +25,8 @@ import aaPostFragmentSource from '../renderer/shaders/aa-post.frag.glsl?raw';
 
 /** Base iterations at zoom 1; scaled up with log(zoom) for deeper zooms. */
 const MAX_ITERATIONS_BASE = 256;
+/** Higher base for Julia sets - they need more iterations to resolve fine detail. */
+const MAX_ITERATIONS_BASE_JULIA = 512;
 /** Default cap for auto-scaling; can be bypassed with manual override. */
 const MAX_ITERATIONS_AUTO_CAP = 4096;
 /** Steep power curve: ~256@z1, ~1200@z18, ~3100@z350, cap@z~1e3. */
@@ -26,14 +35,15 @@ const MAX_ITERATIONS_LOG_POWER = 1.65;
 /** Ratio for manual iteration adjustments (+/- keys). */
 const ITERATION_ADJUST_RATIO = 1.5;
 
-function maxIterationsForZoom(zoom: number): number {
+function maxIterationsForZoom(zoom: number, isJulia: boolean = false): number {
   const z = Math.max(1, zoom);
   const L = Math.log10(z);
+  const base = isJulia ? MAX_ITERATIONS_BASE_JULIA : MAX_ITERATIONS_BASE;
   const n =
-    MAX_ITERATIONS_BASE +
+    base +
     MAX_ITERATIONS_LOG_SCALE * Math.pow(L, MAX_ITERATIONS_LOG_POWER);
   return Math.round(
-    Math.max(MAX_ITERATIONS_BASE, Math.min(MAX_ITERATIONS_AUTO_CAP, n))
+    Math.max(base, Math.min(MAX_ITERATIONS_AUTO_CAP, n))
   );
 }
 
@@ -75,6 +85,9 @@ export class FractalEngine {
 
   /** Overlay showing zoom and iteration count (for debugging). */
   private debugOverlay: HTMLElement | null = null;
+
+  /** Notification element for share confirmation. */
+  private shareNotification: HTMLElement | null = null;
 
   /** Whether post-process antialiasing is enabled. */
   private aaEnabled = false;
@@ -157,16 +170,61 @@ export class FractalEngine {
       this.debugOverlay = document.createElement('div');
       this.debugOverlay.id = 'zoom-debug';
       parent.appendChild(this.debugOverlay);
+
+      // Share notification (hidden by default)
+      this.shareNotification = document.createElement('div');
+      this.shareNotification.id = 'share-notification';
+      this.shareNotification.style.cssText = `
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: rgba(0, 0, 0, 0.85);
+        color: #4ade80;
+        padding: 16px 32px;
+        border-radius: 8px;
+        font-family: system-ui, sans-serif;
+        font-size: 16px;
+        z-index: 1000;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+        pointer-events: none;
+      `;
+      parent.appendChild(this.shareNotification);
     }
 
-    // Handle window resize
-    window.addEventListener('resize', () => {
-      this.handleResize();
+// Wire up share callback
+    this.inputHandler.setShareCallback(() => {
+      this.shareBookmark();
     });
+
+    // Wire up location selection (number keys 1-9)
+    this.inputHandler.setLocationSelectCallback((key) => {
+      this.goToLocation(key);
+    });
+
+    // Handle window resize
+    window.addEventListener('resize', this.handleResize);
+
+    // Listen for URL hash changes (for pasting new bookmark URLs)
+    window.addEventListener('hashchange', this.handleHashChange);
+
+    // Load bookmark from URL if present
+    this.loadBookmark();
 
     // Initial resize
     this.handleResize();
   }
+
+  private handleHashChange = (): void => {
+    this.loadBookmark();
+  };
+
+  private handleResize = (): void => {
+    this.renderer.resize(window.innerWidth, window.innerHeight);
+    this.ensureRenderTargetSize();
+    this.render();
+  };
 
   private setupGeometry(): void {
     const gl = this.renderer.gl;
@@ -193,11 +251,6 @@ export class FractalEngine {
     gl.bufferData(gl.ARRAY_BUFFER, quadVertices, gl.STATIC_DRAW);
   }
 
-  private handleResize(): void {
-    this.renderer.resize(window.innerWidth, window.innerHeight);
-    this.ensureRenderTargetSize();
-    this.render();
-  }
 
   private setupRenderTarget(): void {
     const gl = this.renderer.gl;
@@ -237,9 +290,10 @@ export class FractalEngine {
     const gl = this.renderer.gl;
     const w = this.renderer.canvas.width;
     const h = this.renderer.canvas.height;
+    const isJulia = this.fractalType === FractalType.Julia || this.fractalType === FractalType.BurningShipJulia;
     const maxIter =
       this.maxIterationsOverride ??
-      maxIterationsForZoom(this.viewState.zoom);
+      maxIterationsForZoom(this.viewState.zoom, isJulia);
 
     if (this.debugOverlay) {
       const z = this.viewState.zoom;
@@ -336,8 +390,9 @@ export class FractalEngine {
    * @param direction 1 for increase, -1 for decrease
    */
   adjustMaxIterations(direction: 1 | -1): void {
+    const isJulia = this.fractalType === FractalType.Julia || this.fractalType === FractalType.BurningShipJulia;
     const currentIter =
-      this.maxIterationsOverride ?? maxIterationsForZoom(this.viewState.zoom);
+      this.maxIterationsOverride ?? maxIterationsForZoom(this.viewState.zoom, isJulia);
     const newIter =
       direction > 0
         ? currentIter * ITERATION_ADJUST_RATIO
@@ -444,6 +499,11 @@ export class FractalEngine {
    * Exit Julia mode and return to the source fractal.
    */
   private exitJuliaMode(): void {
+    // Determine the base fractal type from the current Julia variant
+    const baseType = this.fractalType === FractalType.BurningShipJulia
+      ? FractalType.BurningShip
+      : FractalType.Mandelbrot;
+
     // Restore saved state if available
     if (this.savedViewState) {
       this.viewState.centerX = this.savedViewState.centerX;
@@ -451,10 +511,10 @@ export class FractalEngine {
       this.viewState.zoom = this.savedViewState.zoom;
       this.savedViewState = null;
     } else {
-      // Default reset
-      this.viewState.centerX = -0.5;
-      this.viewState.centerY = 0;
-      this.viewState.zoom = 1.0;
+      // Default reset - use appropriate center for the base type
+      this.viewState.centerX = baseType === FractalType.BurningShip ? -0.5 : -0.5;
+      this.viewState.centerY = baseType === FractalType.BurningShip ? -0.5 : 0;
+      this.viewState.zoom = 0.4;
     }
 
     // Restore fractal type
@@ -462,7 +522,8 @@ export class FractalEngine {
       this.fractalType = this.savedFractalType;
       this.savedFractalType = null;
     } else {
-      this.fractalType = FractalType.Mandelbrot;
+      // Default to the appropriate base type
+      this.fractalType = baseType;
     }
 
     this.render();
@@ -513,12 +574,145 @@ export class FractalEngine {
   }
 
   /**
+   * Get the current state as a BookmarkState object
+   */
+  getBookmarkState(): BookmarkState {
+    return {
+      fractalType: this.fractalType,
+      centerX: this.viewState.centerX,
+      centerY: this.viewState.centerY,
+      zoom: this.viewState.zoom,
+      paletteIndex: this.paletteIndex,
+      colorOffset: this.colorOffset,
+      juliaC: this.juliaC,
+      maxIterationsOverride: this.maxIterationsOverride,
+      aaEnabled: this.aaEnabled,
+    };
+  }
+
+  /**
+   * Apply a partial bookmark state to the engine
+   */
+  applyBookmarkState(state: Partial<BookmarkState>): void {
+    if (state.fractalType !== undefined) {
+      this.fractalType = state.fractalType;
+    }
+    if (state.centerX !== undefined) {
+      this.viewState.centerX = state.centerX;
+    }
+    if (state.centerY !== undefined) {
+      this.viewState.centerY = state.centerY;
+    }
+    if (state.zoom !== undefined) {
+      this.viewState.zoom = state.zoom;
+    }
+    if (state.paletteIndex !== undefined) {
+      this.paletteIndex = state.paletteIndex;
+    }
+    if (state.colorOffset !== undefined) {
+      this.colorOffset = state.colorOffset;
+    }
+    if (state.juliaC !== undefined) {
+      this.juliaC = state.juliaC;
+    }
+    if (state.maxIterationsOverride !== undefined) {
+      this.maxIterationsOverride = state.maxIterationsOverride;
+    }
+    if (state.aaEnabled !== undefined) {
+      this.aaEnabled = state.aaEnabled;
+    }
+    this.render();
+  }
+
+  /**
+   * Load bookmark state from URL hash (if present)
+   */
+  private loadBookmark(): void {
+    const state = readUrlBookmark();
+    if (Object.keys(state).length > 0) {
+      this.applyBookmarkState(state);
+      console.log('Loaded fractal state from URL');
+    }
+  }
+
+  /**
+   * Update URL hash with current state (without page reload)
+   */
+  updateUrlBookmark(): void {
+    updateUrlHash(this.getBookmarkState());
+  }
+
+  /**
+   * Navigate to a famous location by keyboard key (1-9)
+   */
+  goToLocation(key: string): void {
+    const location = getLocationByKey(key);
+    if (location) {
+      this.applyBookmarkState(location.state);
+      this.updateUrlBookmark();
+      this.showLocationNotification(location.name);
+    }
+  }
+
+  /**
+   * Show notification when navigating to a famous location
+   */
+  private showLocationNotification(name: string): void {
+    if (!this.shareNotification) return;
+
+    this.shareNotification.textContent = `📍 ${name}`;
+    this.shareNotification.style.color = '#60a5fa';
+    this.shareNotification.style.opacity = '1';
+
+    setTimeout(() => {
+      if (this.shareNotification) {
+        this.shareNotification.style.opacity = '0';
+      }
+    }, 1500);
+  }
+
+  /**
+   * Copy shareable URL to clipboard and show notification
+   */
+  async shareBookmark(): Promise<void> {
+    const success = await copyShareableUrl(this.getBookmarkState());
+    this.showShareNotification(success);
+    if (success) {
+      // Also update the URL bar
+      this.updateUrlBookmark();
+    }
+  }
+
+  /**
+   * Show the share notification briefly
+   */
+  private showShareNotification(success: boolean): void {
+    if (!this.shareNotification) return;
+
+    this.shareNotification.textContent = success
+      ? '📋 Link copied to clipboard!'
+      : '❌ Failed to copy link';
+    this.shareNotification.style.color = success ? '#4ade80' : '#f87171';
+    this.shareNotification.style.opacity = '1';
+
+    setTimeout(() => {
+      if (this.shareNotification) {
+        this.shareNotification.style.opacity = '0';
+      }
+    }, 2000);
+  }
+
+  /**
    * Clean up resources
    */
   destroy(): void {
     this.stop();
+    window.removeEventListener('resize', this.handleResize);
+    window.removeEventListener('hashchange', this.handleHashChange);
     this.debugOverlay?.remove();
     this.debugOverlay = null;
+    this.shareNotification?.remove();
+    this.shareNotification = null;
     this.inputHandler.destroy();
     this.shaderProgram.destroy();
     this.postProcessProgram.destroy();
