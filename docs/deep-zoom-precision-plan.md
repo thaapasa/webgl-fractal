@@ -21,11 +21,11 @@ prioritized implementation plan for deep-zoom precision and performance.
 
 ## The Problem
 
-| Symptom | Cause |
-| ------- | ----- |
-| Slower rendering at deep zoom | More iterations needed; same work everywhere |
-| Pixels become "Lego blocks" | 32-bit float precision exhausted; coordinates lose relative accuracy |
-| Feels unresponsive at extreme zoom | Single-pass, fixed iteration budget; no progressive feedback |
+| Symptom                            | Cause                                                                |
+|------------------------------------|----------------------------------------------------------------------|
+| Slower rendering at deep zoom      | More iterations needed; same work everywhere                         |
+| Pixels become "Lego blocks"        | 32-bit float precision exhausted; coordinates lose relative accuracy |
+| Feels unresponsive at extreme zoom | Single-pass, fixed iteration budget; no progressive feedback         |
 
 **Goal:** Stay fast at deep zoom, keep pixels sharp, and avoid melting the user's
 device.
@@ -225,15 +225,15 @@ locations.
 
 ## Implementation Order
 
-| Phase | Focus | Outcomes |
-| ----- | ----- | -------- |
+| Phase | Focus                                  | Outcomes                                                                |
+|-------|----------------------------------------|-------------------------------------------------------------------------|
 | **1** | Re-centered coordinates + zoom handoff | Sharp pixels at deeper zoom; clear split between normal/deep zoom paths |
-| **2** | Adaptive iteration + tile refinement | Faster rendering; same or better quality where it matters |
-| **3** | Precision-boost mode | Usable rendering at extreme zoom (GPU and/or CPU path) |
-| **4** | Progressive multi-pass | Snappy first frame; refined image without freezing |
-| **5** | Tile culling and heuristics | Less wasted work; better integration with 1–4 |
-| **6** | Perturbation (optional) | Maximum deep zoom with reused orbit work |
-| **7** | Tourist destinations (optional) | UX polish at extreme zoom |
+| **2** | Adaptive iteration + tile refinement   | Faster rendering; same or better quality where it matters               |
+| **3** | Precision-boost mode                   | Usable rendering at extreme zoom (GPU and/or CPU path)                  |
+| **4** | Progressive multi-pass                 | Snappy first frame; refined image without freezing                      |
+| **5** | Tile culling and heuristics            | Less wasted work; better integration with 1–4                           |
+| **6** | Perturbation (optional)                | Maximum deep zoom with reused orbit work                                |
+| **7** | Tourist destinations (optional)        | UX polish at extreme zoom                                               |
 
 ---
 
@@ -252,19 +252,20 @@ locations.
 
 ## Related Documents
 
-- `docs/fractal-webapp-spec.md` — Product and feature spec
-- `docs/phase-1-implementation-plan.md` — Current renderer and controls
-  (view state, shaders, FractalEngine)
+- [architecture.md](./architecture.md) — Current system architecture
+- [fractal-webapp-spec.md](./fractal-webapp-spec.md) — Product and feature spec
+- [phase-1-implementation-plan.md](./phase-1-implementation-plan.md) — Phase 1 plan (✅ complete)
 
 ---
 
 ## Document Info
 
-| Field | Value |
-| ----- | ----- |
-| Version | 1.0 |
-| Status | Plan; ready for implementation |
-| Origins | Joe Bishop (ideas); Skippy the Magnificent (technical translation and prioritization) |
+| Field        | Value                                                                                 |
+|--------------|---------------------------------------------------------------------------------------|
+| Version      | 1.1                                                                                   |
+| Status       | Plan; ready for implementation (Phase 1 complete, this is post-Phase 1)               |
+| Last Updated | January 2026                                                                          |
+| Origins      | Joe Bishop (ideas); Skippy the Magnificent (technical translation and prioritization) |
 
 ---
 

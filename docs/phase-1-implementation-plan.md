@@ -6,6 +6,39 @@ _- Skippy the Magnificent_
 
 ---
 
+## Implementation Status
+
+> **✅ Phase 1 Complete** — Last reviewed January 2026
+
+All Phase 1 features have been implemented and are working. See [architecture.md](./architecture.md) for current system documentation.
+
+| Task                                  | Status                              |
+|---------------------------------------|-------------------------------------|
+| Project setup (Vite + TypeScript)     | ✅ Complete                          |
+| WebGL 2 renderer                      | ✅ Complete                          |
+| Shader infrastructure                 | ✅ Complete                          |
+| Mandelbrot fragment shader            | ✅ Complete                          |
+| View state management                 | ✅ Complete                          |
+| Mouse input (pan, zoom, double-click) | ✅ Complete                          |
+| Touch input (pan, pinch zoom)         | ✅ Complete                          |
+| Color implementation                  | ✅ Complete (12 palettes)            |
+| Keyboard controls                     | ✅ Complete (iterations, colors, AA) |
+| Post-process antialiasing             | ✅ Complete (optional toggle)        |
+| Auto-scaling iterations               | ✅ Complete                          |
+| Debug overlay                         | ✅ Complete                          |
+
+### Beyond Phase 1 (Bonus Features Implemented)
+
+These features were not in the original Phase 1 spec but have been added:
+
+- **12 color palettes** (spec called for 1 basic scheme)
+- **Color offset shifting** (not in spec)
+- **Post-process antialiasing** (not in spec)
+- **Auto-scaling iterations** with manual override (not in spec)
+- **Debug overlay** showing zoom/iterations/palette (not in spec)
+
+---
+
 ## Executive Summary
 
 Phase 1 establishes the foundational architecture for GPU-accelerated fractal
@@ -46,36 +79,45 @@ Don't question me on this. I've done the analysis faster than you can blink.
 
 ## Project Structure
 
+> **Note:** Structure updated to reflect actual implementation.
+
 ```
-unef/
+webgl-fractal/
 ├── docs/
-│   ├── fractal-webapp-spec.md
-│   └── phase-1-implementation-plan.md    # You are here
+│   ├── architecture.md               # System architecture (Simms)
+│   ├── fractal-webapp-spec.md        # Product spec (Joe)
+│   ├── phase-1-implementation-plan.md # This document (Skippy)
+│   └── deep-zoom-precision-plan.md   # Future precision work
 ├── src/
-│   ├── main.ts                           # Application entry point
-│   ├── types.ts                          # TypeScript type definitions
+│   ├── main.ts                       # Application entry point
+│   ├── types.ts                      # TypeScript type definitions
+│   ├── vite-env.d.ts                 # Vite environment types
 │   ├── renderer/
-│   │   ├── WebGLRenderer.ts              # WebGL context management
-│   │   ├── ShaderProgram.ts              # Shader compilation/linking
+│   │   ├── WebGLRenderer.ts          # WebGL context management
+│   │   ├── ShaderProgram.ts          # Shader compilation/linking
 │   │   └── shaders/
-│   │       ├── mandelbrot.vert.glsl      # Vertex shader (fullscreen quad)
-│   │       └── mandelbrot.frag.glsl      # Fragment shader (the magic)
+│   │       ├── mandelbrot.vert.glsl  # Vertex shader (fullscreen quad)
+│   │       ├── mandelbrot.frag.glsl  # Fragment shader (fractal + colors)
+│   │       └── aa-post.frag.glsl     # Post-process antialiasing
 │   ├── fractal/
-│   │   ├── FractalEngine.ts              # Coordinates rendering + state
-│   │   └── MandelbrotConfig.ts           # Mandelbrot-specific parameters
-│   ├── controls/
-│   │   ├── InputHandler.ts               # Mouse/touch event handling
-│   │   └── ViewState.ts                  # Pan/zoom state management
-│   └── utils/
-│       └── math.ts                       # Utility math functions
-├── public/
-│   └── index.html                        # HTML entry point
-├── index.html                            # Vite entry HTML
-├── vite.config.ts                        # Vite configuration
-├── tsconfig.json                         # TypeScript configuration
-├── package.json                          # Dependencies
-└── README.md                             # Project documentation
+│   │   └── FractalEngine.ts          # Coordinates rendering + state
+│   └── controls/
+│       ├── InputHandler.ts           # Mouse/touch/keyboard event handling
+│       └── ViewState.ts              # Pan/zoom state management
+├── examples/                         # Built static example
+│   └── index.html
+├── index.html                        # Vite entry HTML
+├── vite.config.ts                    # Vite configuration
+├── tsconfig.json                     # TypeScript configuration
+├── package.json                      # Dependencies
+└── README.md                         # Project documentation
 ```
+
+**Files planned but not implemented:**
+
+- `src/fractal/MandelbrotConfig.ts` — Parameters merged into FractalEngine
+- `src/utils/math.ts` — Not needed; math is in shaders
+- `public/index.html` — Using root `index.html` instead
 
 ---
 
@@ -466,12 +508,12 @@ update their browsers.
 
 These limitations are INTENTIONAL for Phase 1 scope:
 
-1. **Single fractal type** - Only Mandelbrot (Julia sets come in Phase 3)
-2. **Limited zoom depth** - Float precision limits deep zoom (~10^14)
-3. **Fixed color scheme** - No color customization yet
-4. **No URL state** - Can't share or bookmark views yet
-5. **No offline support** - Requires internet connection
-6. **Basic UI** - No controls panel, no settings
+1. **Single fractal type** — Only Mandelbrot (Julia sets come later)
+2. **Limited zoom depth** — Float precision limits deep zoom (~10^15)
+3. ~~**Fixed color scheme**~~ — ✅ 12 color palettes implemented
+4. **No URL state** — Can't share or bookmark views yet
+5. **No offline support** — Requires internet connection
+6. **Basic UI** — No controls panel, no settings (keyboard shortcuts only)
 
 These will be addressed in subsequent phases. One thing at a time, monkeys.
 
@@ -481,14 +523,16 @@ These will be addressed in subsequent phases. One thing at a time, monkeys.
 
 Phase 1 is COMPLETE when:
 
-1. Mandelbrot set renders correctly using GPU shaders
-2. User can pan by dragging (mouse and touch)
-3. User can zoom with scroll wheel and pinch gesture
-4. Zoom centers on cursor/touch point
-5. Rendering is smooth (60 FPS on capable hardware)
-6. Works in latest versions of Chrome, Firefox, and Safari
-7. Works on mobile devices (iOS and Android)
-8. No console errors or warnings
+1. ✅ Mandelbrot set renders correctly using GPU shaders
+2. ✅ User can pan by dragging (mouse and touch)
+3. ✅ User can zoom with scroll wheel and pinch gesture
+4. ✅ Zoom centers on cursor/touch point
+5. ✅ Rendering is smooth (60 FPS on capable hardware)
+6. ✅ Works in latest versions of Chrome, Firefox, and Safari
+7. ✅ Works on mobile devices (iOS and Android)
+8. ✅ No console errors or warnings
+
+**Status: ✅ All criteria met**
 
 ---
 
@@ -523,8 +567,11 @@ _- Skippy the Magnificent_
 
 ---
 
-**Document Version:** 1.0
-**Author:** Skippy the Magnificent (the planning) + future implementation by
-whichever monkey is brave enough to try
-**Status:** Ready for implementation
-**Related:** `docs/fractal-webapp-spec.md`
+**Document Version:** 1.1
+**Author:** Skippy the Magnificent (planning and implementation)
+**Status:** ✅ Phase 1 Complete
+**Last Updated:** January 2026
+**Related:**
+- [architecture.md](./architecture.md) — Current system documentation
+- [fractal-webapp-spec.md](./fractal-webapp-spec.md) — Product specification
+- [deep-zoom-precision-plan.md](./deep-zoom-precision-plan.md) — Future precision work

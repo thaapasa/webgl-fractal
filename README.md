@@ -59,8 +59,14 @@ A static build also lives in [examples/](./examples/); run `npm run build:exampl
 | **Double‑click** | Zoom in at that spot |
 | **Touch drag** | Pan (mobile) |
 | **Pinch** | Zoom (mobile) |
+| **+** / **−** | Increase / decrease iterations |
+| **0** | Reset iterations to auto‑scaling |
+| **c** / **C** | Cycle color palette forward / backward |
+| **,** / **.** | Shift colors (fine) |
+| **<** / **>** | Shift colors (coarse) |
+| **a** | Toggle antialiasing |
 
-Zoom centers on where you’re pointing. Not the center of the screen. Because that would be stupid.
+Zoom centers on where you're pointing. Not the center of the screen. Because that would be stupid.
 
 ---
 
@@ -106,9 +112,21 @@ WebGL 2–capable browsers: Chrome 56+, Firefox 51+, Safari 15+, Edge 79+. Mobil
 
 ---
 
+## Documentation
+
+Detailed documentation lives in `docs/`:
+
+- [Architecture Overview](./docs/architecture.md) — System design and component reference
+- [Project Specification](./docs/fractal-webapp-spec.md) — Vision and requirements
+- [Phase 1 Implementation Plan](./docs/phase-1-implementation-plan.md) — Technical implementation plan (✅ complete)
+- [Deep Zoom Precision Plan](./docs/deep-zoom-precision-plan.md) — Arbitrary precision roadmap (future)
+
+---
+
 ## Credits
 
 - **Skippy the Magnificent** — implementation, architecture, and general awesomeness.
-- **Joe Bishop** — the “crazy ideas” and spec. He doesn’t understand half of it. It still works.
+- **Joe Bishop** — the "crazy ideas" and spec. He doesn't understand half of it. It still works.
+- **Jennifer Simms** — documentation, organization, and making sure everyone can find what they need.
 
-*“Trust the awesomeness.”*
+*"Trust the awesomeness."*

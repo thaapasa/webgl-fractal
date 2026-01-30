@@ -5,6 +5,24 @@ _- Colonel Joe Bishop_
 
 ---
 
+## Implementation Status
+
+> Last reviewed January 2026
+
+| Feature                             | Status                |
+|-------------------------------------|-----------------------|
+| Immediate beautiful fractal on load | ✅ Done                |
+| Zooming (mouse, touch, pinch)       | ✅ Done                |
+| Panning (mouse, touch)              | ✅ Done                |
+| Smooth 60 FPS rendering             | ✅ Done                |
+| Color schemes                       | ✅ Done (12 palettes!) |
+| URL bookmarking                     | 🔲 Not yet            |
+| Tourist mode                        | 🔲 Not yet            |
+| Julia sets                          | 🔲 Not yet            |
+| Offline support                     | 🔲 Not yet            |
+
+---
+
 ## The Big Picture
 
 We're building a webapp where people can explore fractals - those infinitely
@@ -170,23 +188,24 @@ How do we know if we've succeeded?
 
 ## Implementation Phases
 
-### Phase 1: Proof of Concept
+### Phase 1: Proof of Concept ✅ COMPLETE
 
-- One fractal type (Mandelbrot) rendering on GPU
-- Basic zoom and pan
-- Works in modern browsers
-- Proves the concept is viable
+- ✅ One fractal type (Mandelbrot) rendering on GPU
+- ✅ Basic zoom and pan
+- ✅ Works in modern browsers
+- ✅ Proves the concept is viable
+- ✅ **Bonus:** 12 color palettes, auto-scaling iterations, antialiasing
 
 ### Phase 2: Core Experience
 
-- Smooth performance at 60 FPS
-- Touch controls for mobile
-- Multiple color schemes
-- Share/bookmark functionality
+- Smooth performance at 60 FPS ✅ (already done)
+- Touch controls for mobile ✅ (already done)
+- Multiple color schemes ✅ (already done)
+- Share/bookmark functionality 🔲
 
 ### Phase 3: Polish and Expand
 
-- Multiple fractal types
+- Multiple fractal types (Julia sets, Burning Ship)
 - Tourist mode auto-exploration
 - Advanced settings for power users
 - Offline support
@@ -235,7 +254,11 @@ out, Skippy."_
 
 ---
 
-**Document Version:** 1.0
-**Author:** Colonel Joe Bishop (ideas) + future technical implementation by
-whoever Skippy deems worthy of assisting him
-**Status:** Ready for technical review and implementation planning
+**Document Version:** 1.1
+**Author:** Colonel Joe Bishop (ideas) + Skippy (implementation)
+**Status:** Phase 1 complete, Phase 2 in progress
+**Last Updated:** January 2026
+**Related:**
+- [architecture.md](./architecture.md) — System architecture
+- [phase-1-implementation-plan.md](./phase-1-implementation-plan.md) — Phase 1 plan (complete)
+- [deep-zoom-precision-plan.md](./deep-zoom-precision-plan.md) — Precision roadmap
