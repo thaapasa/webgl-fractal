@@ -34,7 +34,6 @@ fn vertexMain(@builtin(vertex_index) vertexIndex: u32) -> VertexOutput {
   var output: VertexOutput;
   output.position = vec4f(pos[vertexIndex], 0.0, 1.0);
   output.uv = (pos[vertexIndex] + 1.0) * 0.5;
-  // Don't flip Y - keep consistent with WebGL coordinate system
   return output;
 }
 
@@ -43,28 +42,56 @@ fn palette(t: f32, a: vec3f, b: vec3f, c: vec3f, d: vec3f) -> vec3f {
   return a + b * cos(6.28318 * (c * t + d));
 }
 
-// HDR brightness curve
-fn hdrBrightnessCurve(normalized: f32, peakMultiplier: f32) -> f32 {
-  let LOW_END = 0.15;
-  let HIGH_START = 0.50;  // Start ramping up earlier (was 0.80)
+// HDR brightness curve for MONOTONIC palettes (dark-to-bright journey)
+// These palettes use brightness to show iteration depth
+fn hdrBrightnessCurveMonotonic(normalized: f32, peakMultiplier: f32) -> f32 {
+  let LOW_END = 0.05;
+  let MID_START = 0.30;
+  let HIGH_START = 0.60;
 
   if (normalized < LOW_END) {
-    // Quick rise from dim to standard
+    // Very dim at start
     let t = normalized / LOW_END;
-    return mix(0.1, 1.0, sqrt(t));
+    return mix(0.0, 0.15, sqrt(t));
+  } else if (normalized < MID_START) {
+    // Rise to moderate
+    let t = (normalized - LOW_END) / (MID_START - LOW_END);
+    return mix(0.15, 0.5, t);
   } else if (normalized < HIGH_START) {
-    // Gradual rise through middle range
-    let t = (normalized - LOW_END) / (HIGH_START - LOW_END);
-    return mix(1.0, 1.5, t);  // Slight boost in middle
+    // Rise to standard
+    let t = (normalized - MID_START) / (HIGH_START - MID_START);
+    return mix(0.5, 1.0, t);
   } else {
-    // Dramatic ramp to peak brightness
+    // HDR boost zone - ramp to peak brightness
     let t = (normalized - HIGH_START) / (1.0 - HIGH_START);
-    let eased = pow(t, 1.2);  // Less aggressive curve for smoother ramp
-    return mix(1.5, peakMultiplier, eased);
+    let eased = pow(t, 1.1);
+    return mix(1.0, peakMultiplier, eased);
   }
 }
 
-fn getColor(t_in: f32, paletteIdx: i32, isCycling: bool) -> vec3f {
+// HDR brightness curve for CYCLING palettes (bright throughout with HDR highlights)
+// These palettes rely on color variation, so keep them bright
+fn hdrBrightnessCurveCycling(normalized: f32, peakMultiplier: f32) -> f32 {
+  let HIGH_START = 0.70;
+
+  if (normalized < HIGH_START) {
+    // Keep bright throughout - slight variation for depth
+    let t = normalized / HIGH_START;
+    return mix(0.85, 1.0, t);
+  } else {
+    // HDR boost near the boundary - this is where the magic happens
+    let t = (normalized - HIGH_START) / (1.0 - HIGH_START);
+    let eased = pow(t, 1.2);
+    return mix(1.0, peakMultiplier, eased);
+  }
+}
+
+// ============================================
+// SDR Palettes - Use RGB luminosity for depth
+// Dark colors for low iterations, bright for high
+// ============================================
+
+fn getColorSDR(t_in: f32, paletteIdx: i32, isCycling: bool) -> vec3f {
   var t = t_in;
   if (isCycling) {
     t = fract(t);
@@ -72,101 +99,201 @@ fn getColor(t_in: f32, paletteIdx: i32, isCycling: bool) -> vec3f {
     t = clamp(t, 0.0, 1.0);
   }
 
-  // HDR palettes: colors have high luminosity, HDR curve controls perceived brightness
-  // All palettes designed to have decent brightness at all points
-
   if (paletteIdx == 0) {
-    // Rainbow - vibrant cycling colors
-    return palette(t, vec3f(0.6), vec3f(0.4), vec3f(1.0), vec3f(0.0, 0.33, 0.67));
+    // Rainbow
+    return palette(t, vec3f(0.5), vec3f(0.5), vec3f(1.0), vec3f(0.0, 0.33, 0.67));
   } else if (paletteIdx == 1) {
-    // Blue HDR - rich blues with good luminosity throughout
-    let c1 = vec3f(0.15, 0.2, 0.5);   // deep blue (not black)
-    let c2 = vec3f(0.2, 0.4, 0.7);    // medium blue
-    let c3 = vec3f(0.3, 0.6, 0.85);   // sky blue
-    let c4 = vec3f(0.5, 0.8, 0.95);   // light blue
-    let c5 = vec3f(0.8, 0.95, 1.0);   // bright cyan-white
+    // Blue journey - dark to bright
+    let c1 = vec3f(0.02, 0.01, 0.08);
+    let c2 = vec3f(0.05, 0.15, 0.25);
+    let c3 = vec3f(0.1, 0.4, 0.5);
+    let c4 = vec3f(0.3, 0.6, 0.8);
+    let c5 = vec3f(0.7, 0.9, 1.0);
     if (t < 0.25) { return mix(c1, c2, t * 4.0); }
     else if (t < 0.5) { return mix(c2, c3, (t - 0.25) * 4.0); }
     else if (t < 0.75) { return mix(c3, c4, (t - 0.5) * 4.0); }
     else { return mix(c4, c5, (t - 0.75) * 4.0); }
   } else if (paletteIdx == 2) {
-    // Gold HDR - warm golds with luminosity
-    let c1 = vec3f(0.4, 0.25, 0.1);   // warm brown
-    let c2 = vec3f(0.6, 0.4, 0.15);   // bronze
-    let c3 = vec3f(0.8, 0.55, 0.2);   // gold
-    let c4 = vec3f(0.95, 0.75, 0.35); // bright gold
-    let c5 = vec3f(1.0, 0.95, 0.7);   // pale gold
+    // Gold journey
+    let c1 = vec3f(0.04, 0.02, 0.01);
+    let c2 = vec3f(0.2, 0.08, 0.02);
+    let c3 = vec3f(0.5, 0.25, 0.05);
+    let c4 = vec3f(0.85, 0.6, 0.2);
+    let c5 = vec3f(1.0, 0.95, 0.7);
     if (t < 0.25) { return mix(c1, c2, t * 4.0); }
     else if (t < 0.5) { return mix(c2, c3, (t - 0.25) * 4.0); }
     else if (t < 0.75) { return mix(c3, c4, (t - 0.5) * 4.0); }
     else { return mix(c4, c5, (t - 0.75) * 4.0); }
   } else if (paletteIdx == 3) {
-    // Grayscale HDR - neutral grays, never too dark
-    let c1 = vec3f(0.25, 0.25, 0.27); // medium-dark gray
-    let c2 = vec3f(0.4, 0.4, 0.42);   // medium gray
-    let c3 = vec3f(0.6, 0.6, 0.6);    // light gray
-    let c4 = vec3f(0.8, 0.8, 0.78);   // pale gray
-    let c5 = vec3f(1.0, 0.98, 0.95);  // warm white
+    // Grayscale
+    let c1 = vec3f(0.01, 0.01, 0.03);
+    let c2 = vec3f(0.15, 0.15, 0.17);
+    let c3 = vec3f(0.45, 0.45, 0.45);
+    let c4 = vec3f(0.75, 0.74, 0.72);
+    let c5 = vec3f(1.0, 0.98, 0.95);
     if (t < 0.25) { return mix(c1, c2, t * 4.0); }
     else if (t < 0.5) { return mix(c2, c3, (t - 0.25) * 4.0); }
     else if (t < 0.75) { return mix(c3, c4, (t - 0.5) * 4.0); }
     else { return mix(c4, c5, (t - 0.75) * 4.0); }
   } else if (paletteIdx == 4) {
-    // Fire HDR - hot colors with glow
-    return palette(t, vec3f(0.6, 0.4, 0.3), vec3f(0.4, 0.4, 0.3), vec3f(1.0, 1.0, 0.5), vec3f(0.0, 0.1, 0.2));
+    // Fire
+    return palette(t, vec3f(0.5), vec3f(0.5), vec3f(1.0, 1.0, 0.5), vec3f(0.0, 0.1, 0.2));
   } else if (paletteIdx == 5) {
-    // Ice HDR - cool colors
-    return palette(t, vec3f(0.5, 0.6, 0.7), vec3f(0.3, 0.3, 0.3), vec3f(1.0, 0.7, 0.4), vec3f(0.0, 0.15, 0.20));
+    // Ice
+    return palette(t, vec3f(0.5), vec3f(0.5), vec3f(1.0, 0.7, 0.4), vec3f(0.0, 0.15, 0.20));
   } else if (paletteIdx == 6) {
-    // Sepia HDR - warm browns with luminosity
-    let c1 = vec3f(0.35, 0.25, 0.18); // warm brown
-    let c2 = vec3f(0.5, 0.38, 0.25);  // tan
-    let c3 = vec3f(0.65, 0.52, 0.38); // light tan
-    let c4 = vec3f(0.82, 0.72, 0.58); // cream
-    let c5 = vec3f(1.0, 0.95, 0.88);  // warm white
+    // Sepia
+    let c1 = vec3f(0.03, 0.02, 0.01);
+    let c2 = vec3f(0.15, 0.08, 0.03);
+    let c3 = vec3f(0.4, 0.25, 0.12);
+    let c4 = vec3f(0.7, 0.55, 0.35);
+    let c5 = vec3f(1.0, 0.95, 0.85);
     if (t < 0.25) { return mix(c1, c2, t * 4.0); }
     else if (t < 0.5) { return mix(c2, c3, (t - 0.25) * 4.0); }
     else if (t < 0.75) { return mix(c3, c4, (t - 0.5) * 4.0); }
     else { return mix(c4, c5, (t - 0.75) * 4.0); }
   } else if (paletteIdx == 7) {
-    // Ocean HDR - teals and aquas
-    let c1 = vec3f(0.1, 0.3, 0.4);    // deep teal
-    let c2 = vec3f(0.15, 0.45, 0.55); // teal
-    let c3 = vec3f(0.25, 0.6, 0.65);  // aqua
-    let c4 = vec3f(0.45, 0.78, 0.8);  // light aqua
-    let c5 = vec3f(0.7, 0.95, 0.92);  // bright aqua
+    // Ocean
+    let c1 = vec3f(0.0, 0.02, 0.05);
+    let c2 = vec3f(0.02, 0.08, 0.2);
+    let c3 = vec3f(0.05, 0.3, 0.4);
+    let c4 = vec3f(0.2, 0.6, 0.6);
+    let c5 = vec3f(0.6, 0.95, 0.9);
     if (t < 0.25) { return mix(c1, c2, t * 4.0); }
     else if (t < 0.5) { return mix(c2, c3, (t - 0.25) * 4.0); }
     else if (t < 0.75) { return mix(c3, c4, (t - 0.5) * 4.0); }
     else { return mix(c4, c5, (t - 0.75) * 4.0); }
   } else if (paletteIdx == 8) {
-    // Purple HDR - rich purples
-    let c1 = vec3f(0.3, 0.15, 0.45);  // deep purple
-    let c2 = vec3f(0.45, 0.25, 0.6);  // purple
-    let c3 = vec3f(0.6, 0.4, 0.75);   // orchid
-    let c4 = vec3f(0.78, 0.6, 0.88);  // light purple
-    let c5 = vec3f(0.95, 0.85, 1.0);  // pale lavender
+    // Purple
+    let c1 = vec3f(0.03, 0.01, 0.06);
+    let c2 = vec3f(0.15, 0.05, 0.25);
+    let c3 = vec3f(0.4, 0.15, 0.5);
+    let c4 = vec3f(0.7, 0.4, 0.75);
+    let c5 = vec3f(0.95, 0.8, 1.0);
     if (t < 0.25) { return mix(c1, c2, t * 4.0); }
     else if (t < 0.5) { return mix(c2, c3, (t - 0.25) * 4.0); }
     else if (t < 0.75) { return mix(c3, c4, (t - 0.5) * 4.0); }
     else { return mix(c4, c5, (t - 0.75) * 4.0); }
   } else if (paletteIdx == 9) {
-    // Forest HDR - greens
-    let c1 = vec3f(0.15, 0.3, 0.12);  // forest green
-    let c2 = vec3f(0.25, 0.45, 0.2);  // green
-    let c3 = vec3f(0.4, 0.6, 0.35);   // light green
-    let c4 = vec3f(0.6, 0.78, 0.5);   // pale green
-    let c5 = vec3f(0.8, 0.95, 0.7);   // bright lime
+    // Forest
+    let c1 = vec3f(0.02, 0.03, 0.01);
+    let c2 = vec3f(0.05, 0.12, 0.04);
+    let c3 = vec3f(0.1, 0.35, 0.15);
+    let c4 = vec3f(0.3, 0.65, 0.3);
+    let c5 = vec3f(0.7, 0.95, 0.6);
     if (t < 0.25) { return mix(c1, c2, t * 4.0); }
     else if (t < 0.5) { return mix(c2, c3, (t - 0.25) * 4.0); }
     else if (t < 0.75) { return mix(c3, c4, (t - 0.5) * 4.0); }
     else { return mix(c4, c5, (t - 0.75) * 4.0); }
   } else if (paletteIdx == 10) {
-    // Sunset HDR - warm oranges and pinks
-    return palette(t, vec3f(0.6, 0.45, 0.4), vec3f(0.35, 0.35, 0.3), vec3f(1.0, 1.0, 0.5), vec3f(0.0, 0.1, 0.2));
+    // Sunset
+    return palette(t, vec3f(0.5, 0.3, 0.2), vec3f(0.5, 0.4, 0.3), vec3f(1.0, 1.0, 0.5), vec3f(0.0, 0.1, 0.2));
   } else {
-    // Electric HDR - vibrant neon
-    return palette(t, vec3f(0.55, 0.55, 0.6), vec3f(0.45, 0.45, 0.4), vec3f(1.0), vec3f(0.3, 0.2, 0.2));
+    // Electric
+    return palette(t, vec3f(0.5), vec3f(0.6), vec3f(1.0), vec3f(0.3, 0.2, 0.2));
+  }
+}
+
+// ============================================
+// HDR Palettes - Fully saturated bright colors
+// Brightness controlled by HDR nits curve, not RGB
+// ============================================
+
+fn getColorHDR(t_in: f32, paletteIdx: i32, isCycling: bool) -> vec3f {
+  var t = t_in;
+  if (isCycling) {
+    t = fract(t);
+  } else {
+    t = clamp(t, 0.0, 1.0);
+  }
+
+  // All HDR palettes use fully saturated, bright colors
+  // The HDR brightness curve handles the luminosity
+
+  if (paletteIdx == 0) {
+    // Rainbow HDR - fully vibrant cycling
+    return palette(t, vec3f(0.5), vec3f(0.5), vec3f(1.0), vec3f(0.0, 0.33, 0.67));
+  } else if (paletteIdx == 1) {
+    // Blue HDR - rich saturated blues
+    let c1 = vec3f(0.2, 0.4, 1.0);   // electric blue
+    let c2 = vec3f(0.3, 0.6, 1.0);   // bright blue
+    let c3 = vec3f(0.4, 0.8, 1.0);   // cyan-blue
+    let c4 = vec3f(0.6, 0.9, 1.0);   // light cyan
+    let c5 = vec3f(0.85, 1.0, 1.0);  // bright cyan-white
+    if (t < 0.25) { return mix(c1, c2, t * 4.0); }
+    else if (t < 0.5) { return mix(c2, c3, (t - 0.25) * 4.0); }
+    else if (t < 0.75) { return mix(c3, c4, (t - 0.5) * 4.0); }
+    else { return mix(c4, c5, (t - 0.75) * 4.0); }
+  } else if (paletteIdx == 2) {
+    // Gold HDR - brilliant golds and yellows
+    let c1 = vec3f(1.0, 0.5, 0.1);   // orange
+    let c2 = vec3f(1.0, 0.65, 0.2);  // gold-orange
+    let c3 = vec3f(1.0, 0.8, 0.3);   // gold
+    let c4 = vec3f(1.0, 0.9, 0.5);   // bright gold
+    let c5 = vec3f(1.0, 1.0, 0.8);   // pale yellow
+    if (t < 0.25) { return mix(c1, c2, t * 4.0); }
+    else if (t < 0.5) { return mix(c2, c3, (t - 0.25) * 4.0); }
+    else if (t < 0.75) { return mix(c3, c4, (t - 0.5) * 4.0); }
+    else { return mix(c4, c5, (t - 0.75) * 4.0); }
+  } else if (paletteIdx == 3) {
+    // Grayscale HDR - pure whites
+    return vec3f(1.0, 1.0, 1.0);  // Just white - HDR curve does the work
+  } else if (paletteIdx == 4) {
+    // Fire HDR - cycling cosine palette (same as SDR)
+    return palette(t, vec3f(0.5), vec3f(0.5), vec3f(1.0, 1.0, 0.5), vec3f(0.0, 0.1, 0.2));
+  } else if (paletteIdx == 5) {
+    // Ice HDR - cycling cosine palette (same as SDR)
+    return palette(t, vec3f(0.5), vec3f(0.5), vec3f(1.0, 0.7, 0.4), vec3f(0.0, 0.15, 0.20));
+  } else if (paletteIdx == 6) {
+    // Sepia HDR - warm creams and tans
+    let c1 = vec3f(1.0, 0.7, 0.4);   // tan
+    let c2 = vec3f(1.0, 0.8, 0.55);  // light tan
+    let c3 = vec3f(1.0, 0.88, 0.7);  // cream
+    let c4 = vec3f(1.0, 0.95, 0.85); // pale cream
+    let c5 = vec3f(1.0, 1.0, 0.95);  // warm white
+    if (t < 0.25) { return mix(c1, c2, t * 4.0); }
+    else if (t < 0.5) { return mix(c2, c3, (t - 0.25) * 4.0); }
+    else if (t < 0.75) { return mix(c3, c4, (t - 0.5) * 4.0); }
+    else { return mix(c4, c5, (t - 0.75) * 4.0); }
+  } else if (paletteIdx == 7) {
+    // Ocean HDR - vivid teals and aquas
+    let c1 = vec3f(0.1, 0.8, 0.8);   // teal
+    let c2 = vec3f(0.2, 0.9, 0.85);  // aqua
+    let c3 = vec3f(0.4, 0.95, 0.9);  // light aqua
+    let c4 = vec3f(0.65, 1.0, 0.95); // pale aqua
+    let c5 = vec3f(0.85, 1.0, 1.0);  // bright cyan-white
+    if (t < 0.25) { return mix(c1, c2, t * 4.0); }
+    else if (t < 0.5) { return mix(c2, c3, (t - 0.25) * 4.0); }
+    else if (t < 0.75) { return mix(c3, c4, (t - 0.5) * 4.0); }
+    else { return mix(c4, c5, (t - 0.75) * 4.0); }
+  } else if (paletteIdx == 8) {
+    // Purple HDR - vivid magentas and purples
+    let c1 = vec3f(0.8, 0.2, 1.0);   // vivid purple
+    let c2 = vec3f(0.85, 0.4, 1.0);  // magenta-purple
+    let c3 = vec3f(0.9, 0.6, 1.0);   // orchid
+    let c4 = vec3f(0.95, 0.8, 1.0);  // light lavender
+    let c5 = vec3f(1.0, 0.95, 1.0);  // pale pink-white
+    if (t < 0.25) { return mix(c1, c2, t * 4.0); }
+    else if (t < 0.5) { return mix(c2, c3, (t - 0.25) * 4.0); }
+    else if (t < 0.75) { return mix(c3, c4, (t - 0.5) * 4.0); }
+    else { return mix(c4, c5, (t - 0.75) * 4.0); }
+  } else if (paletteIdx == 9) {
+    // Forest HDR - vivid greens
+    let c1 = vec3f(0.3, 1.0, 0.2);   // bright green
+    let c2 = vec3f(0.5, 1.0, 0.4);   // lime
+    let c3 = vec3f(0.7, 1.0, 0.55);  // yellow-green
+    let c4 = vec3f(0.85, 1.0, 0.75); // pale lime
+    let c5 = vec3f(0.95, 1.0, 0.9);  // pale green-white
+    if (t < 0.25) { return mix(c1, c2, t * 4.0); }
+    else if (t < 0.5) { return mix(c2, c3, (t - 0.25) * 4.0); }
+    else if (t < 0.75) { return mix(c3, c4, (t - 0.5) * 4.0); }
+    else { return mix(c4, c5, (t - 0.75) * 4.0); }
+  } else if (paletteIdx == 10) {
+    // Sunset HDR - cycling cosine palette (same as SDR)
+    return palette(t, vec3f(0.5, 0.3, 0.2), vec3f(0.5, 0.4, 0.3), vec3f(1.0, 1.0, 0.5), vec3f(0.0, 0.1, 0.2));
+  } else {
+    // Electric HDR - cycling cosine palette (same as SDR)
+    return palette(t, vec3f(0.5), vec3f(0.6), vec3f(1.0), vec3f(0.3, 0.2, 0.2));
   }
 }
 
@@ -227,22 +354,37 @@ fn fragmentMain(input: VertexOutput) -> @location(0) vec4f {
     t = normalized * numCycles + u.colorOffset;
   }
 
-  var color = getColor(t, u.paletteIndex, !isMonotonic);
-
-  // Add subtle glow near boundary
-  let edgeFactor = 1.0 - f32(iterations) / f32(maxIter);
-  let glow = pow(edgeFactor, 0.5) * 0.3;
-  color = color * (1.0 + glow);
-
-  // Apply HDR brightness if enabled
+  // Use different palettes for HDR vs SDR
   if (u.hdrEnabled != 0) {
+    // HDR: bright saturated colors + HDR brightness curve
+    var color = getColorHDR(t, u.paletteIndex, !isMonotonic);
+
+    // Apply appropriate HDR brightness curve based on palette type
     let peakMultiplier = u.hdrPeakNits / 100.0;
-    let brightnessMult = hdrBrightnessCurve(normalized, peakMultiplier);
+    var brightnessMult: f32;
+
+    if (isMonotonic) {
+      // Monotonic palettes: dark-to-bright journey, HDR shows depth via brightness
+      brightnessMult = hdrBrightnessCurveMonotonic(normalized, peakMultiplier);
+    } else {
+      // Cycling palettes: stay bright throughout, HDR highlights near boundary
+      brightnessMult = hdrBrightnessCurveCycling(normalized, peakMultiplier);
+    }
+
     color = color * brightnessMult;
-    // For HDR, don't clamp - let values > 1.0 be displayed brighter
+
+    // Don't clamp - let values > 1.0 be displayed brighter on HDR displays
     return vec4f(color, 1.0);
   } else {
-    // SDR: clamp to 1.0
+    // SDR: traditional palettes where RGB luminosity shows depth
+    var color = getColorSDR(t, u.paletteIndex, !isMonotonic);
+
+    // Add subtle glow near boundary
+    let edgeFactor = 1.0 - f32(iterations) / f32(maxIter);
+    let glow = pow(edgeFactor, 0.5) * 0.3;
+    color = color * (1.0 + glow);
+
+    // Clamp to SDR range
     return vec4f(min(color, vec3f(1.0)), 1.0);
   }
 }
