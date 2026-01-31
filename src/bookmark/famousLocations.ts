@@ -29,9 +29,9 @@ export const FAMOUS_LOCATIONS: FamousLocation[] = [
       fractalType: FractalType.Mandelbrot,
       centerX: -0.747,
       centerY: 0.1,
-      zoom: 50,
+      zoom: 70,
       paletteIndex: 4, // Fire
-      colorOffset: 0,
+      colorOffset: 0.1,
       juliaC: [-0.7, 0.27015],
       maxIterationsOverride: null,
       aaEnabled: false,
@@ -43,12 +43,12 @@ export const FAMOUS_LOCATIONS: FamousLocation[] = [
     key: '2',
     state: {
       fractalType: FractalType.Mandelbrot,
-      centerX: 0.273833471870982,
-      centerY: 0.00561979255775977,
-      zoom: 80,
+      centerX: 0.273897508880652,
+      centerY: 0.00596002252770864,
+      zoom: 180,
       paletteIndex: 10, // Sunset
-      colorOffset: 0,
-      juliaC: [-0.7, 0.27015],
+      colorOffset: -0.1,
+      juliaC: [0.273897508880652, 0.00596002252770864],
       maxIterationsOverride: null,
       aaEnabled: false,
     },
@@ -59,11 +59,11 @@ export const FAMOUS_LOCATIONS: FamousLocation[] = [
     key: '3',
     state: {
       fractalType: FractalType.Mandelbrot,
-      centerX: -0.743419359336048,
-      centerY: 0.131251071265607,
-      zoom: 1183.1341328454,
-      paletteIndex: 4, // Fire
-      colorOffset: 0.3,
+      centerX: -0.743733589978665,
+      centerY: 0.130905227502858,
+      zoom: 350,
+      paletteIndex: 11,
+      colorOffset: 0.2,
       juliaC: [-0.7, 0.27015],
       maxIterationsOverride: null,
       aaEnabled: false,
@@ -75,11 +75,11 @@ export const FAMOUS_LOCATIONS: FamousLocation[] = [
     key: '4',
     state: {
       fractalType: FractalType.Mandelbrot,
-      centerX: -0.761574,
-      centerY: -0.0847596,
-      zoom: 5000,
-      paletteIndex: 11, // Electric
-      colorOffset: 0,
+      centerX: -0.761542947469557,
+      centerY: -0.0848063048239542,
+      zoom: 1300,
+      paletteIndex: 5,
+      colorOffset: -0.6,
       juliaC: [-0.7, 0.27015],
       maxIterationsOverride: null,
       aaEnabled: false,
@@ -94,10 +94,10 @@ export const FAMOUS_LOCATIONS: FamousLocation[] = [
     state: {
       fractalType: FractalType.BurningShip,
       centerX: -1.80173025652805,
-      centerY: 0.0026088215386122,
+      centerY: 0.0153452534367207,
       zoom: 9,
       paletteIndex: 11, // Electric
-      colorOffset: 0.3,
+      colorOffset: 0.2,
       juliaC: [-0.7, 0.27015],
       maxIterationsOverride: null,
       aaEnabled: false,
@@ -131,7 +131,7 @@ export const FAMOUS_LOCATIONS: FamousLocation[] = [
       centerY: 0,
       zoom: 0.45,
       paletteIndex: 10,
-      colorOffset: 0.4,
+      colorOffset: 0.5,
       juliaC: [-0.8, 0.156],
       maxIterationsOverride: null,
       aaEnabled: false,
@@ -147,7 +147,7 @@ export const FAMOUS_LOCATIONS: FamousLocation[] = [
       centerY: 0,
       zoom: 0.45,
       paletteIndex: 11, // Electric
-      colorOffset: 0.1,
+      colorOffset: 0.2,
       juliaC: [-0.7269, 0.1889],
       maxIterationsOverride: 1000, // Needs more iterations to resolve fine filaments
       aaEnabled: false,
@@ -164,7 +164,7 @@ export const FAMOUS_LOCATIONS: FamousLocation[] = [
       centerX: 0.0531593112628493,
       centerY: -0.00735797965780141,
       zoom: 4,
-      paletteIndex: 11, // Electric
+      paletteIndex: 4,
       colorOffset: 0.1,
       juliaC: [-1.59537659751621, 0.00014862028243811],
       maxIterationsOverride: null,
