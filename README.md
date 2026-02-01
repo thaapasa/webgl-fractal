@@ -47,10 +47,9 @@ Output goes to `examples/`.
 
 ## Live Example
 
-**[Fractal Explorer](https://thaapasa.github.io/webgl-fractal/examples/)** — try it in the browser.  
-A static build also lives in [examples/webgpu/](./examples/webgpu/); run `npm run build:examples` then `npx serve examples` to preview locally.
+**[Fractal Explorer](https://thaapasa.github.io/webgl-fractal/examples/webgpu/)** — try it in the browser; click [here](https://thaapasa.github.io/webgl-fractal/examples/webgl/) for WebGL version.
 
-There is also an older example, implemented on top of WebGL, if WebGPU does not work for you: [examples/webgl/](./examples/webgl/).
+A static build also lives in [examples/webgpu/](./examples/webgpu/); run `npm run build:examples` then `npx serve examples` to preview locally.
 
 ---
 
