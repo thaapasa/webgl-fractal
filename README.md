@@ -1,12 +1,14 @@
 # Fractal Explorer
 
-_GPU-accelerated fractal rendering in the browser. Because apparently you monkeys need something pretty to look at._
+_GPU-accelerated fractal rendering in the browser with HDR support. Because apparently you monkeys need something pretty to look at._
 
 ---
 
 ## What Is This?
 
-**Fractal Explorer** is a webapp that renders fractals — the [Mandelbrot set](https://en.wikipedia.org/wiki/Mandelbrot_set), [Burning Ship](https://en.wikipedia.org/wiki/Burning_Ship_fractal), and [Julia sets](https://en.wikipedia.org/wiki/Julia_set) — those infinitely zoomable mathematical patterns that look like they came from another dimension — **directly on your GPU**. Every pixel is computed in parallel. No CPU sweat. No waiting. Just smooth, beautiful math.
+**Fractal Explorer** is a webapp that renders fractals — the [Mandelbrot set](https://en.wikipedia.org/wiki/Mandelbrot_set), [Burning Ship](https://en.wikipedia.org/wiki/Burning_Ship_fractal), and [Julia sets](https://en.wikipedia.org/wiki/Julia_set) — those infinitely zoomable mathematical patterns that look like they came from another dimension — **directly on your GPU** using WebGPU. Every pixel is computed in parallel. No CPU sweat. No waiting. Just smooth, beautiful math.
+
+**HDR Support**: On compatible displays, the fractal boundary glows with true high dynamic range brightness — colors that literally shine brighter than standard white. It's like the math is on fire.
 
 The goal: open the app, see a fractal, drag to pan, scroll to zoom, and fall into infinity. No loading screens. No configuration menus. Just *bam*.
 
@@ -14,7 +16,7 @@ The goal: open the app, see a fractal, drag to pan, scroll to zoom, and fall int
 
 ## For Monkeys Who Want to Run It
 
-**Prerequisites:** [Node.js](https://nodejs.org/) (v18+ recommended). Yes, you need that. No, I will not explain why.
+**Prerequisites:** [Node.js](https://nodejs.org/) (v18+ recommended) and a WebGPU-capable browser (Chrome 113+, Edge 113+, Firefox Nightly).
 
 ```bash
 # Install dependencies
@@ -24,7 +26,7 @@ npm install
 npm run dev
 ```
 
-Then open your browser at the URL Vite prints (usually `http://localhost:5173`). If you see a blank page, check the console. If you see “WebGL 2 Not Supported,” use a real browser. Chrome, Firefox, or Safari. Preferably updated.
+Then open your browser at the URL Vite prints (usually `http://localhost:5173`). If you see a blank page, check the console. If you see "WebGPU Not Supported," use a modern browser with WebGPU enabled.
 
 **Build for production:**
 
@@ -67,7 +69,9 @@ A static build also lives in [examples/](./examples/); run `npm run build:exampl
 | **,** / **.**    | Shift colors (fine)                    |
 | **<** / **>**    | Shift colors (coarse)                  |
 | **r**            | Reset color offset                     |
-| **a**            | Toggle antialiasing                    |
+| **b**            | Extend HDR bright region               |
+| **B** (shift)    | Contract HDR bright region             |
+| **d**            | Reset HDR brightness                   |
 | **1–9**          | Jump to famous locations               |
 | **s**            | Copy shareable link to clipboard       |
 | **h**            | Toggle help overlay                    |
@@ -114,10 +118,11 @@ Press **j** to enter Julia picker mode. Click anywhere on the Mandelbrot or Burn
 |-----------|-------------|
 | Language  | TypeScript  |
 | Build     | Vite        |
-| Rendering | WebGL 2     |
-| Shaders   | GLSL ES 3.0 |
+| Rendering | WebGPU      |
+| Shaders   | WGSL        |
+| HDR       | Extended tone mapping (rgba16float) |
 
-WebGL 2, not WebGPU. Better browser support, plenty fast for this. I’ve already done the analysis. Don’t @ me.
+WebGPU, not WebGL. It's 2026 and we're doing this properly. HDR support requires `toneMapping: { mode: 'extended' }` — that's the magic sauce.
 
 ---
 
@@ -131,14 +136,12 @@ src/
 │   ├── BookmarkManager.ts  # URL-based state sharing
 │   └── famousLocations.ts  # Curated famous fractal spots
 ├── renderer/
-│   ├── WebGLRenderer.ts    # WebGL context, canvas, render loop
-│   ├── ShaderProgram.ts    # Shader compile/link, uniforms
+│   ├── WebGPURenderer.ts   # WebGPU context, canvas, HDR config
+│   ├── Palettes.ts         # Color palette definitions
 │   └── shaders/
-│       ├── mandelbrot.vert.glsl   # Fullscreen quad
-│       ├── mandelbrot.frag.glsl   # The actual Mandelbrot math
-│       └── aa-post.frag.glsl      # Antialiasing post-process
+│       └── mandelbrot.wgsl # Fractal computation (WGSL)
 ├── fractal/
-│   └── FractalEngine.ts    # Orchestrates everything
+│   └── WebGPUFractalEngine.ts  # Orchestrates everything
 └── controls/
     ├── ViewState.ts        # Pan/zoom state, coordinate transforms
     └── InputHandler.ts     # Mouse & touch → view changes
@@ -150,7 +153,9 @@ src/
 
 ## Browser Support
 
-WebGL 2–capable browsers: Chrome 56+, Firefox 51+, Safari 15+, Edge 79+. Mobile Chrome and Safari 15+ as well. Older browsers get nothing. Update your stuff.
+WebGPU-capable browsers: Chrome 113+, Edge 113+, Firefox Nightly (with WebGPU enabled). Safari support is in progress. Older browsers get a polite error message. Update your stuff.
+
+**HDR Support:** Requires a display that reports `(dynamic-range: high)` to the browser. Most modern HDR monitors and MacBooks with HDR displays work. The app auto-detects and enables HDR when available.
 
 ---
 

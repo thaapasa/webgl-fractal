@@ -267,6 +267,3 @@ export function getPaletteName(index: number): string {
   return PALETTES[index % PALETTES.length].name;
 }
 
-export function getAllPaletteNames(): string[] {
-  return PALETTES.map(p => p.name);
-}

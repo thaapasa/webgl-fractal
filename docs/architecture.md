@@ -7,39 +7,38 @@ _— Jennifer Simms_
 
 ## Document Info
 
-| Field        | Value                  |
-|--------------|------------------------|
-| Last Updated | January 2026           |
-| Status       | Current implementation |
-| Maintainer   | Simms (documentation)  |
+| Field        | Value                     |
+|--------------|---------------------------|
+| Last Updated | February 2026             |
+| Status       | Current implementation    |
+| Maintainer   | Simms (documentation)     |
 
 ---
 
 ## System Overview
 
-Fractal Explorer is a GPU-accelerated fractal renderer built with TypeScript and WebGL 2. The application supports multiple fractal types (Mandelbrot, Burning Ship, Julia, and Burning Ship Julia) and runs entirely in the browser with no backend dependencies.
+Fractal Explorer is a GPU-accelerated fractal renderer built with TypeScript and WebGPU. The application supports multiple fractal types (Mandelbrot, Burning Ship, Julia, and Burning Ship Julia), runs entirely in the browser, and features HDR (High Dynamic Range) rendering on compatible displays.
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                         Browser                             │
 ├─────────────────────────────────────────────────────────────┤
-│  ┌─────────────┐    ┌──────────────┐    ┌─────────────────┐ │
-│  │   main.ts   │───▶│FractalEngine │───▶│  WebGLRenderer  │ │
-│  │  (entry)    │    │(orchestrator)│    │   (context)     │ │
-│  └─────────────┘    └──────┬───────┘    └────────┬────────┘ │
-│                            │                     │          │
-│                     ┌──────┴──────┐        ┌─────┴─────┐    │
-│                     │             │        │           │    │
-│              ┌──────▼─────┐ ┌─────▼────┐   │ShaderProgram   │
-│              │InputHandler│ │ViewState │   │  (shaders)│    │
-│              │  (events)  │ │(viewport)│   └───────────┘    │
-│              └────────────┘ └──────────┘                    │
+│  ┌─────────────┐    ┌───────────────────┐  ┌─────────────┐  │
+│  │   main.ts   │───▶│WebGPUFractalEngine│─▶│WebGPURenderer│ │
+│  │  (entry)    │    │  (orchestrator)   │  │  (context)  │  │
+│  └─────────────┘    └─────────┬─────────┘  └──────┬──────┘  │
+│                               │                   │         │
+│                        ┌──────┴──────┐      ┌─────┴─────┐   │
+│                        │             │      │           │   │
+│                 ┌──────▼─────┐ ┌─────▼────┐ │ Palettes  │   │
+│                 │InputHandler│ │ViewState │ │ (colors)  │   │
+│                 │  (events)  │ │(viewport)│ └───────────┘   │
+│                 └────────────┘ └──────────┘                 │
 │                                                             │
 │  GPU ═══════════════════════════════════════════════════    │
-│  ║ mandelbrot.vert.glsl  │  mandelbrot.frag.glsl        ║   │
-│  ║ (fullscreen quad)     │  (fractal computation)       ║   │
-│  ║                       │  aa-post.frag.glsl           ║   │
-│  ║                       │  (antialiasing post-pass)    ║   │
+│  ║ mandelbrot.wgsl (WGSL)                               ║   │
+│  ║ - Vertex shader (fullscreen triangle)                ║   │
+│  ║ - Fragment shader (fractal computation + HDR)        ║   │
 │  ═══════════════════════════════════════════════════════    │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -48,12 +47,13 @@ Fractal Explorer is a GPU-accelerated fractal renderer built with TypeScript and
 
 ## Technology Stack
 
-| Layer      | Technology  | Version |
-|------------|-------------|---------|
-| Language   | TypeScript  | ^5.3    |
-| Build Tool | Vite        | ^5.0    |
-| Rendering  | WebGL 2     | —       |
-| Shaders    | GLSL ES 3.0 | —       |
+| Layer      | Technology   | Version |
+|------------|--------------|---------|
+| Language   | TypeScript   | ^5.3    |
+| Build Tool | Vite         | ^5.0    |
+| Rendering  | WebGPU       | —       |
+| Shaders    | WGSL         | —       |
+| HDR        | rgba16float + extended tone mapping | — |
 
 ---
 
@@ -63,79 +63,101 @@ Fractal Explorer is a GPU-accelerated fractal renderer built with TypeScript and
 
 Initializes the application:
 
+- Checks WebGPU support (shows error message if unavailable)
 - Creates the canvas element
-- Instantiates `FractalEngine`
+- Instantiates `WebGPUFractalEngine`
 - Handles initialization errors with user-friendly messages
 - Cleans up on page unload
 
-### 2. Fractal Engine (`src/fractal/FractalEngine.ts`)
+### 2. Fractal Engine (`src/fractal/WebGPUFractalEngine.ts`)
 
 The central orchestrator that ties all components together.
 
 **Responsibilities:**
 
 - Initializes and owns all other components
+- Creates WebGPU render pipeline and uniform buffers
 - Manages the render loop
 - Coordinates shader uniform updates
-- Handles window resize
-- Provides public API for iteration and color controls
+- Handles window resize and HDR display changes
 
 **Key Features:**
 
 - **Multiple fractal types**: Mandelbrot, Burning Ship, Julia, and Burning Ship Julia (cycle with `f`/`F` keys)
 - **Julia picker mode**: Select Julia constant by clicking on Mandelbrot/Burning Ship (`j` key)
 - **Auto-scaling iterations**: Automatically increases `maxIterations` as zoom deepens (configurable with `+`/`-` keys)
-- **12 color palettes**: Selectable via `c`/`C` keys
+- **12 color palettes**: Selectable via `c`/`C` keys, with separate SDR and HDR variants
 - **Color offset**: Shift the color cycle with `,`/`.` keys
-- **Optional antialiasing**: Toggle with `a` key (two-pass render)
+- **HDR rendering**: Auto-detected, with adjustable brightness bias (`b`/`B`/`d` keys)
 - **Famous locations**: 9 curated fractal spots accessible via number keys `1`–`9`
 - **URL bookmarking**: Share views via URL hash parameters (`s` to copy link)
 - **Help overlay**: In-app keyboard shortcut reference (`h` to toggle)
 - **Screenshot mode**: Hide all UI for clean screenshots (`Space` to toggle)
-- **Debug overlay**: Shows current fractal type, zoom level, iteration count, palette name, and Julia constant (when applicable)
+- **Debug overlay**: Shows current fractal type, zoom level, iteration count, palette name, HDR status, and Julia constant (when applicable)
 
 **Render Pipeline:**
 
-1. If AA enabled: render Mandelbrot to offscreen framebuffer
-2. If AA enabled: apply post-process antialiasing to screen
-3. If AA disabled: render Mandelbrot directly to screen
+1. Update uniform buffer with current state and palette parameters
+2. Execute render pass with fullscreen triangle
+3. Fragment shader computes fractal + applies HDR brightness curve
 
-### 3. WebGL Renderer (`src/renderer/WebGLRenderer.ts`)
+### 3. WebGPU Renderer (`src/renderer/WebGPURenderer.ts`)
 
-Manages the WebGL 2 context and canvas lifecycle.
+Manages the WebGPU context and canvas lifecycle.
 
 **Responsibilities:**
 
-- Acquires WebGL 2 context with optimal settings
+- Acquires WebGPU adapter and device
+- Configures canvas context for HDR when supported
 - Handles high-DPI displays via `devicePixelRatio`
 - Manages canvas resize
 - Runs the animation frame loop
-- Handles context loss/restore events
+- Monitors HDR display changes via media queries
 
-**Context Settings:**
+**HDR Configuration:**
 
 ```typescript
-{
-  antialias: false,      // Manual AA in post-pass
-  depth: false,          // 2D rendering only
-  stencil: false,        // Not needed
-  alpha: false,          // Opaque background
-  preserveDrawingBuffer: false,
-  powerPreference: 'high-performance'
-}
+context.configure({
+  device: this.device,
+  format: 'rgba16float',           // 16-bit float per channel
+  alphaMode: 'opaque',
+  toneMapping: { mode: 'extended' } // Enables HDR output
+});
 ```
 
-### 4. Shader Program (`src/renderer/ShaderProgram.ts`)
+**HDR Detection:**
 
-Compiles, links, and manages GLSL shaders.
+The renderer uses `matchMedia('(dynamic-range: high)')` to detect HDR displays and listens for changes when the user modifies display settings.
 
-**Responsibilities:**
+### 4. Palettes (`src/renderer/Palettes.ts`)
 
-- Compiles vertex and fragment shaders
-- Links into a WebGL program
-- Caches uniform locations for performance
-- Provides type-safe uniform setters
-- Logs compilation errors with full source for debugging
+Defines all color palettes in TypeScript, passed to the GPU as uniform parameters.
+
+**Palette Types:**
+
+- **Cosine palettes**: `color = a + b * cos(2π * (c * t + d))` — used for cycling palettes
+- **Gradient palettes**: 5-stop linear gradients — used for monotonic palettes
+
+**HDR Variants:**
+
+Monotonic palettes have optional HDR-specific color stops (brighter, more saturated) because HDR uses a brightness curve rather than color darkness to show iteration depth.
+
+**Available Palettes (12 total):**
+
+| Index | Name      | Type      |
+|-------|-----------|-----------|
+| 0     | Rainbow   | Cycling   |
+| 1     | Blue      | Monotonic |
+| 2     | Gold      | Monotonic |
+| 3     | Grayscale | Monotonic |
+| 4     | Fire      | Cycling   |
+| 5     | Ice       | Cycling   |
+| 6     | Sepia     | Monotonic |
+| 7     | Ocean     | Monotonic |
+| 8     | Purple    | Monotonic |
+| 9     | Forest    | Monotonic |
+| 10    | Sunset    | Cycling   |
+| 11    | Electric  | Cycling   |
 
 ### 5. View State (`src/controls/ViewState.ts`)
 
@@ -188,7 +210,9 @@ Translates browser events into view state changes.
 | `,` / `.`    | Shift color offset fine              |
 | `<` / `>`    | Shift color offset coarse            |
 | `r`          | Reset color offset                   |
-| `a`          | Toggle antialiasing                  |
+| `b`          | Extend HDR bright region             |
+| `B`          | Contract HDR bright region           |
+| `d`          | Reset HDR brightness                 |
 | `1`–`9`      | Jump to famous locations             |
 | `s`          | Copy shareable URL to clipboard      |
 | `h`          | Toggle help overlay                  |
@@ -207,18 +231,17 @@ Handles URL-based state persistence and sharing.
 
 **URL Parameters:**
 
-| Param | Full Name    | Description                      |
-|-------|--------------|----------------------------------|
-| `t`   | type         | Fractal type (0–3)               |
-| `x`   | centerX      | View center X coordinate         |
-| `y`   | centerY      | View center Y coordinate         |
-| `z`   | zoom         | Zoom level                       |
-| `p`   | palette      | Color palette index (0–11)       |
-| `o`   | colorOffset  | Color cycle offset               |
-| `jr`  | juliaReal    | Julia constant real component    |
+| Param | Full Name    | Description                       |
+|-------|--------------|-----------------------------------|
+| `t`   | type         | Fractal type (0–3)                |
+| `x`   | centerX      | View center X coordinate          |
+| `y`   | centerY      | View center Y coordinate          |
+| `z`   | zoom         | Zoom level                        |
+| `p`   | palette      | Color palette index (0–11)        |
+| `o`   | colorOffset  | Color cycle offset                |
+| `jr`  | juliaReal    | Julia constant real component     |
 | `ji`  | juliaImag    | Julia constant imaginary component|
-| `i`   | iterations   | Max iterations override          |
-| `aa`  | antialiasing | AA enabled (1 if true)           |
+| `i`   | iterations   | Max iterations override           |
 
 ### 8. Famous Locations (`src/bookmark/famousLocations.ts`)
 
@@ -242,42 +265,49 @@ Each location stores complete `BookmarkState` including position, zoom, fractal 
 
 ---
 
-## Shaders
+## Shader (`src/renderer/shaders/mandelbrot.wgsl`)
 
-### Vertex Shader (`mandelbrot.vert.glsl`)
+A single WGSL shader file containing both vertex and fragment stages.
 
-A minimal fullscreen quad shader:
+### Vertex Stage
 
-- Takes 2D position in UV space (0–1)
-- Outputs position in clip space (-1 to 1)
-- Passes UV coordinates to fragment shader
+A minimal fullscreen triangle shader (more efficient than a quad):
 
-### Fragment Shader (`mandelbrot.frag.glsl`)
+- Uses 3 vertices to cover the entire screen
+- No vertex buffer needed — positions computed from vertex index
+- Passes UV coordinates to fragment stage
 
-The core fractal computation:
+### Fragment Stage
 
-**Uniforms:**
+The core fractal computation with HDR support:
+
+**Uniforms (passed via uniform buffer):**
 
 | Uniform           | Type  | Description                          |
 |-------------------|-------|--------------------------------------|
-| `u_resolution`    | vec2  | Canvas size in pixels                |
-| `u_center`        | vec2  | View center in fractal coords        |
-| `u_zoom`          | float | Current zoom level                   |
-| `u_maxIterations` | int   | Iteration limit                      |
-| `u_time`          | float | Time in seconds (for animations)     |
-| `u_paletteIndex`  | int   | Color palette (0–11)                 |
-| `u_colorOffset`   | float | Color cycle offset                   |
-| `u_fractalType`   | int   | Fractal type (0–3)                   |
-| `u_juliaC`        | vec2  | Julia set constant (for Julia types) |
+| `resolution`      | vec2f | Canvas size in pixels                |
+| `center`          | vec2f | View center in fractal coords        |
+| `zoom`            | f32   | Current zoom level                   |
+| `maxIterations`   | i32   | Iteration limit                      |
+| `time`            | f32   | Time in seconds (for animations)     |
+| `colorOffset`     | f32   | Color cycle offset                   |
+| `fractalType`     | i32   | Fractal type (0–3)                   |
+| `juliaC`          | vec2f | Julia set constant (for Julia types) |
+| `hdrEnabled`      | i32   | Whether HDR output is active         |
+| `hdrBrightnessBias`| f32  | Brightness curve adjustment (-1 to +1)|
+| `paletteType`     | i32   | 0 = cosine, 1 = gradient             |
+| `isMonotonic`     | i32   | Whether palette is monotonic         |
+| `paletteA/B/C/D`  | vec3f | Cosine palette parameters            |
+| `gradientC1–C5`   | vec3f | Gradient color stops                 |
 
 **Fractal Types:**
 
-| Value | Name               | Formula                                     |
-|-------|--------------------|---------------------------------------------|
-| 0     | Mandelbrot         | z = z² + c                                  |
-| 1     | Burning Ship       | z = (\|Re(z)\| + i\|Im(z)\|)² + c           |
-| 2     | Julia              | z = z² + c (z starts at pixel, c fixed)     |
-| 3     | Burning Ship Julia | Burning Ship with fixed c                   |
+| Value | Name               | Formula                                   |
+|-------|--------------------|-------------------------------------------|
+| 0     | Mandelbrot         | z = z² + c                                |
+| 1     | Burning Ship       | z = (\|Re(z)\| + i\|Im(z)\|)² + c         |
+| 2     | Julia              | z = z² + c (z starts at pixel, c fixed)   |
+| 3     | Burning Ship Julia | Burning Ship with fixed c                 |
 
 **Algorithm:**
 
@@ -287,34 +317,26 @@ The core fractal computation:
 4. Iterate z = z² + c (with absolute value step for Burning Ship variants) until |z| > 2 or max iterations reached
 5. If max iterations reached: pixel is black (in set)
 6. Otherwise: compute smooth iteration count for anti-banding
-7. Map iteration to color via selected palette
-8. Add subtle glow near boundary
+7. Get color from palette (cosine or gradient)
+8. Apply HDR brightness curve if HDR enabled
+9. Output color (values > 1.0 allowed for HDR)
 
-**Color Palettes (12 total):**
+**HDR Brightness Curves:**
 
-| Index | Name      | Type      |
-|-------|-----------|-----------|
-| 0     | Rainbow   | Cycling   |
-| 1     | Blue      | Monotonic |
-| 2     | Gold      | Monotonic |
-| 3     | Grayscale | Monotonic |
-| 4     | Fire      | Cycling   |
-| 5     | Ice       | Cycling   |
-| 6     | Sepia     | Monotonic |
-| 7     | Ocean     | Monotonic |
-| 8     | Purple    | Monotonic |
-| 9     | Forest    | Monotonic |
-| 10    | Sunset    | Cycling   |
-| 11    | Electric  | Cycling   |
+Two separate curves are used based on palette type:
 
-### Post-Process Shader (`aa-post.frag.glsl`)
+- **Monotonic palettes**: Dark-to-bright journey controlled by HDR brightness
+  - Low iterations: very dim (3% → 15%)
+  - Mid iterations: moderate (15% → 100%)
+  - High iterations: HDR boost (100% → 1000% peak)
 
-Edge-aware antialiasing:
+- **Cycling palettes**: Stay bright throughout, HDR highlights near boundary
+  - Most of image: 85% → 100%
+  - Near boundary: HDR boost to peak
 
-- Black pixels (inside the set) are preserved
-- Colored pixels are averaged with non-black neighbors
-- Only applies where local contrast exceeds threshold
-- Prevents color bleeding into the set
+The `hdrBrightnessBias` uniform shifts where bright regions appear:
+- Positive values: more of image becomes bright
+- Negative values: only near-boundary is bright
 
 ---
 
@@ -323,11 +345,11 @@ Edge-aware antialiasing:
 ### User Interaction Flow
 
 ```
-User Input → InputHandler → ViewState → FractalEngine.render()
+User Input → InputHandler → ViewState → WebGPUFractalEngine.render()
                                               ↓
-                                        Set uniforms
+                                        Update uniform buffer
                                               ↓
-                                        Draw fullscreen quad
+                                        Draw fullscreen triangle
                                               ↓
                                         Fragment shader computes
                                         each pixel in parallel
@@ -338,21 +360,22 @@ User Input → InputHandler → ViewState → FractalEngine.render()
 ```
 requestAnimationFrame loop
        ↓
-FractalEngine.render()
+WebGPUFractalEngine.render()
        ↓
-┌──────────────────────────┐
-│ Pass 1: Mandelbrot       │
-│ - Bind FBO (if AA) or 0  │
-│ - Set uniforms           │
-│ - Draw quad              │
-└──────────────────────────┘
-       ↓ (if AA enabled)
-┌──────────────────────────┐
-│ Pass 2: Post-process AA  │
-│ - Bind screen (FBO 0)    │
-│ - Sample render texture  │
-│ - Apply edge smoothing   │
-└──────────────────────────┘
+┌────────────────────────────────┐
+│ Update uniform buffer          │
+│ - View state (center, zoom)    │
+│ - Fractal params               │
+│ - Palette params               │
+│ - HDR settings                 │
+└────────────────────────────────┘
+       ↓
+┌────────────────────────────────┐
+│ Execute render pass            │
+│ - Draw fullscreen triangle     │
+│ - Fragment shader computes     │
+│   fractal + color + HDR        │
+└────────────────────────────────┘
 ```
 
 ---
@@ -362,10 +385,11 @@ FractalEngine.render()
 ### Implemented Optimizations
 
 - **GPU computation**: All fractal math runs in parallel on GPU
-- **Uniform caching**: Shader uniform locations are cached
+- **No branching in shader**: Palette parameters passed as uniforms instead of palette index
+- **Fullscreen triangle**: More efficient than fullscreen quad (3 vertices vs 6)
 - **High-DPI support**: Canvas resolution matches device pixel ratio
-- **Context settings**: Disabled unnecessary buffers (depth, stencil, alpha)
 - **Discrete GPU preference**: Requests high-performance GPU when available
+- **HDR via extended tone mapping**: No post-process pass needed for HDR
 
 ### Auto-Scaling Iterations
 
@@ -385,23 +409,21 @@ maxIter = BASE + SCALE × log₁₀(zoom)^POWER
 
 ```
 src/
-├── main.ts                     # Application entry point
-├── types.ts                    # TypeScript type definitions
+├── main.ts                        # Application entry point
+├── types.ts                       # TypeScript type definitions
 ├── bookmark/
-│   ├── BookmarkManager.ts      # URL-based state sharing
-│   └── famousLocations.ts      # Curated famous fractal spots (keys 1-9)
+│   ├── BookmarkManager.ts         # URL-based state sharing
+│   └── famousLocations.ts         # Curated famous fractal spots (keys 1-9)
 ├── controls/
-│   ├── InputHandler.ts         # Mouse, touch, keyboard events
-│   └── ViewState.ts            # Pan/zoom state management
+│   ├── InputHandler.ts            # Mouse, touch, keyboard events
+│   └── ViewState.ts               # Pan/zoom state management
 ├── fractal/
-│   └── FractalEngine.ts        # Central orchestrator
+│   └── WebGPUFractalEngine.ts     # Central orchestrator
 └── renderer/
-    ├── WebGLRenderer.ts        # WebGL context management
-    ├── ShaderProgram.ts        # Shader compilation/linking
+    ├── WebGPURenderer.ts          # WebGPU context and HDR config
+    ├── Palettes.ts                # Color palette definitions
     └── shaders/
-        ├── mandelbrot.vert.glsl   # Fullscreen quad vertex shader
-        ├── mandelbrot.frag.glsl   # Fractal fragment shader
-        └── aa-post.frag.glsl      # Antialiasing post-process
+        └── mandelbrot.wgsl        # WGSL shader (fractal + HDR)
 ```
 
 ---
@@ -419,14 +441,16 @@ src/
 
 ## Browser Support
 
-| Browser       | Minimum Version |
-|---------------|-----------------|
-| Chrome        | 56+             |
-| Firefox       | 51+             |
-| Safari        | 15+             |
-| Edge          | 79+             |
-| Mobile Chrome | 58+             |
-| Mobile Safari | 15+             |
+| Browser        | Minimum Version | Notes                        |
+|----------------|-----------------|------------------------------|
+| Chrome         | 113+            | Full support                 |
+| Edge           | 113+            | Full support                 |
+| Firefox        | Nightly         | Requires WebGPU flag enabled |
+| Safari         | —               | WebGPU in development        |
+
+**HDR Support:**
+
+HDR rendering requires both WebGPU support and an HDR-capable display. The app detects HDR via `matchMedia('(dynamic-range: high)')` and auto-enables extended tone mapping when available.
 
 ---
 

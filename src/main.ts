@@ -5,18 +5,32 @@
  * - Skippy the Magnificent
  */
 
-import { FractalEngine } from './fractal/FractalEngine';
 import { WebGPUFractalEngine } from './fractal/WebGPUFractalEngine';
 import { WebGPURenderer } from './renderer/WebGPURenderer';
 
 console.log('Fractal Explorer - Initializing...');
 
-let engine: FractalEngine | WebGPUFractalEngine | null = null;
+let engine: WebGPUFractalEngine | null = null;
 
 async function init(): Promise<void> {
   const app = document.getElementById('app');
   if (!app) {
     console.error('Could not find #app element');
+    return;
+  }
+
+  // Check WebGPU support
+  if (!WebGPURenderer.isSupported()) {
+    app.innerHTML = `
+      <div style="color: white; text-align: center; padding: 40px; font-family: system-ui, sans-serif;">
+        <h1>WebGPU Not Supported</h1>
+        <p>This application requires WebGPU, which is not available in your browser.</p>
+        <p style="margin-top: 20px; color: #888;">
+          Please use a modern browser with WebGPU support:<br>
+          Chrome 113+, Edge 113+, or Firefox Nightly with WebGPU enabled.
+        </p>
+      </div>
+    `;
     return;
   }
 
@@ -26,15 +40,7 @@ async function init(): Promise<void> {
   app.appendChild(canvas);
 
   try {
-    // Try WebGPU first for HDR support
-    if (WebGPURenderer.isSupported()) {
-      console.log('WebGPU available - using WebGPU renderer with HDR support');
-      engine = await WebGPUFractalEngine.create(canvas);
-    } else {
-      console.log('WebGPU not available - falling back to WebGL');
-      engine = new FractalEngine(canvas);
-    }
-
+    engine = await WebGPUFractalEngine.create(canvas);
     engine.start();
 
     console.log('Fractal Explorer initialized successfully');
@@ -49,7 +55,8 @@ async function init(): Promise<void> {
     console.log('  - c / C to cycle color palettes (forward/backward)');
     console.log('  - , / . to shift colors (fine)');
     console.log('  - < / > to shift colors (coarse)');
-    console.log('  - e / Shift+D to adjust HDR brightness');
+    console.log('  - b / B to adjust HDR brightness');
+    console.log('  - d to reset HDR brightness');
     console.log('  - s to share/copy bookmark URL');
     console.log('  - 1-9 to visit famous locations');
     console.log('  - h to toggle help overlay');

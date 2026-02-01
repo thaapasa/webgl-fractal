@@ -18,7 +18,7 @@ import {
 import { getLocationByKey } from '../bookmark/famousLocations';
 import { getPalette, getPaletteParams, getPaletteName, PALETTE_COUNT } from '../renderer/Palettes';
 
-import shaderSource from '../renderer/shaders/mandelbrot-v2.wgsl?raw';
+import shaderSource from '../renderer/shaders/mandelbrot.wgsl?raw';
 
 /** Base iterations at zoom 1 */
 const MAX_ITERATIONS_BASE = 256;
