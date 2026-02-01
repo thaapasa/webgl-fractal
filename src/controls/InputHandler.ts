@@ -37,6 +37,8 @@ export class InputHandler {
   private onColorOffset: ColorOffsetCallback | null = null;
   private onColorOffsetReset: ToggleCallback | null = null;
   private onToggleAA: ToggleCallback | null = null;
+  private onAdjustHdrBrightness: IterationAdjustCallback | null = null;
+  private onResetHdrBrightness: ToggleCallback | null = null;
   private onFractalCycle: FractalCycleCallback | null = null;
   private onToggleJuliaMode: ToggleCallback | null = null;
   private onJuliaPick: JuliaPickCallback | null = null;
@@ -106,6 +108,28 @@ export class InputHandler {
    */
   setToggleAACallback(callback: ToggleCallback): void {
     this.onToggleAA = callback;
+  }
+
+  /**
+   * Set callback for HDR toggle (no-op, HDR is auto-detected)
+   */
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  setToggleHDRCallback(_callback: ToggleCallback): void {
+    // HDR is now auto-detected based on display capabilities
+  }
+
+  /**
+   * Set callback for HDR brightness adjustment (b/B keys)
+   */
+  setAdjustHdrBrightnessCallback(callback: IterationAdjustCallback): void {
+    this.onAdjustHdrBrightness = callback;
+  }
+
+  /**
+   * Set callback for HDR brightness reset (Shift+R key)
+   */
+  setResetHdrBrightnessCallback(callback: ToggleCallback): void {
+    this.onResetHdrBrightness = callback;
   }
 
   /**
@@ -402,6 +426,21 @@ export class InputHandler {
       case 'A':
         e.preventDefault();
         this.onToggleAA?.();
+        break;
+      case 'b':
+        // b: extend bright region (make more of image bright)
+        e.preventDefault();
+        this.onAdjustHdrBrightness?.(1);
+        break;
+      case 'B':
+        // Shift+B: contract bright region (make less of image bright)
+        e.preventDefault();
+        this.onAdjustHdrBrightness?.(-1);
+        break;
+      case 'd':
+        // d: reset HDR brightness bias
+        e.preventDefault();
+        this.onResetHdrBrightness?.();
         break;
       case 'f':
         e.preventDefault();

@@ -1,6 +1,6 @@
 # Copilot Instructions
 
-This project is a WebGL fractal renderer built with TypeScript and Vite.
+This project is a WebGPU fractal renderer with HDR support, built with TypeScript and Vite.
 
 ## Available Personas
 
@@ -32,8 +32,8 @@ Simms is a meticulous documentation guardian who keeps README, architectural doc
   - `main.ts` - Application entry point
   - `bookmark/` - URL sharing and famous locations
   - `controls/` - Input handling and view state management
-  - `fractal/` - Fractal computation engine
-  - `renderer/` - WebGL rendering and shaders
+  - `fractal/` - WebGPU fractal computation engine
+  - `renderer/` - WebGPU rendering, palettes, and WGSL shaders
 - `docs/` - Project specifications and documentation
 - `examples/` - Built example output
 - `.github/prompts/` - AI persona prompts

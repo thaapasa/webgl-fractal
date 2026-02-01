@@ -5,16 +5,32 @@
  * - Skippy the Magnificent
  */
 
-import { FractalEngine } from './fractal/FractalEngine';
+import { WebGPUFractalEngine } from './fractal/WebGPUFractalEngine';
+import { WebGPURenderer } from './renderer/WebGPURenderer';
 
 console.log('Fractal Explorer - Initializing...');
 
-let engine: FractalEngine | null = null;
+let engine: WebGPUFractalEngine | null = null;
 
-function init(): void {
+async function init(): Promise<void> {
   const app = document.getElementById('app');
   if (!app) {
     console.error('Could not find #app element');
+    return;
+  }
+
+  // Check WebGPU support
+  if (!WebGPURenderer.isSupported()) {
+    app.innerHTML = `
+      <div style="color: white; text-align: center; padding: 40px; font-family: system-ui, sans-serif;">
+        <h1>WebGPU Not Supported</h1>
+        <p>This application requires WebGPU, which is not available in your browser.</p>
+        <p style="margin-top: 20px; color: #888;">
+          Please use a modern browser with WebGPU support:<br>
+          Chrome 113+, Edge 113+, or Firefox Nightly with WebGPU enabled.
+        </p>
+      </div>
+    `;
     return;
   }
 
@@ -24,8 +40,7 @@ function init(): void {
   app.appendChild(canvas);
 
   try {
-    // Initialize the fractal engine
-    engine = new FractalEngine(canvas);
+    engine = await WebGPUFractalEngine.create(canvas);
     engine.start();
 
     console.log('Fractal Explorer initialized successfully');
@@ -40,7 +55,8 @@ function init(): void {
     console.log('  - c / C to cycle color palettes (forward/backward)');
     console.log('  - , / . to shift colors (fine)');
     console.log('  - < / > to shift colors (coarse)');
-    console.log('  - a to toggle antialiasing');
+    console.log('  - b / B to adjust HDR brightness');
+    console.log('  - d to reset HDR brightness');
     console.log('  - s to share/copy bookmark URL');
     console.log('  - 1-9 to visit famous locations');
     console.log('  - h to toggle help overlay');
@@ -59,7 +75,7 @@ function init(): void {
 
 // Initialize when DOM is ready
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', init);
+  document.addEventListener('DOMContentLoaded', () => init());
 } else {
   init();
 }
