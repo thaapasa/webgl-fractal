@@ -83,10 +83,10 @@ The central orchestrator that ties all components together.
 
 **Key Features:**
 
-- **Multiple fractal types**: Mandelbrot, Burning Ship, Julia, and Burning Ship Julia (cycle with `f`/`F` keys)
-- **Julia picker mode**: Select Julia constant by clicking on Mandelbrot/Burning Ship (`j` key)
+- **Multiple fractal types**: 10 base types (Mandelbrot, Burning Ship, Tricorn, Celtic, Buffalo, Phoenix, Multibrot³, Multibrot⁴, Funky, Perpendicular), each with Julia variant — 20 total (cycle with `f`/`F` keys)
+- **Julia picker mode**: Select Julia constant by clicking on any base fractal (`j` key)
 - **Auto-scaling iterations**: Automatically increases `maxIterations` as zoom deepens (configurable with `+`/`-` keys)
-- **12 color palettes**: Selectable via `c`/`C` keys, with separate SDR and HDR variants
+- **Two palette types**: 12 cosine palettes (cycle with `c`/`C`) and 7 gradient palettes (cycle with `g`/`G`), with separate SDR and HDR variants for gradients
 - **Color offset**: Shift the color cycle with `,`/`.` keys
 - **HDR rendering**: Auto-detected, with adjustable brightness bias (`b`/`B`/`d` keys)
 - **Famous locations**: 9 curated fractal spots accessible via number keys `1`–`9`
@@ -202,12 +202,13 @@ Translates browser events into view state changes.
 | Double-click | Zoom in 2× at cursor                 |
 | Touch drag   | Pan (mobile)                         |
 | Pinch        | Zoom at midpoint (mobile)            |
-| `f` / `F`    | Cycle fractal type forward/backward  |
-| `j`          | Toggle Julia picker mode             |
-| `+` / `-`    | Increase/decrease iterations         |
-| `0`          | Reset to auto-scaling iterations     |
-| `c` / `C`    | Cycle color palette forward/backward |
-| `,` / `.`    | Shift color offset fine              |
+| `f` / `F`    | Cycle fractal type forward/backward   |
+| `j`          | Toggle Julia picker mode              |
+| `+` / `-`    | Increase/decrease iterations          |
+| `0`          | Reset to auto-scaling iterations      |
+| `c` / `C`    | Cycle cosine palettes forward/backward|
+| `g` / `G`    | Cycle gradient palettes forward/backward|
+| `,` / `.`    | Shift color offset fine               |
 | `<` / `>`    | Shift color offset coarse            |
 | `r`          | Reset color offset                   |
 | `b`          | Extend HDR bright region             |
@@ -231,17 +232,20 @@ Handles URL-based state persistence and sharing.
 
 **URL Parameters:**
 
-| Param | Full Name    | Description                       |
-|-------|--------------|-----------------------------------|
-| `t`   | type         | Fractal type (0–3)                |
-| `x`   | centerX      | View center X coordinate          |
-| `y`   | centerY      | View center Y coordinate          |
-| `z`   | zoom         | Zoom level                        |
-| `p`   | palette      | Color palette index (0–11)        |
-| `o`   | colorOffset  | Color cycle offset                |
-| `jr`  | juliaReal    | Julia constant real component     |
-| `ji`  | juliaImag    | Julia constant imaginary component|
-| `i`   | iterations   | Max iterations override           |
+| Param | Full Name       | Description                        |
+|-------|-----------------|-----------------------------------|
+| `t`   | type            | Fractal type (0–19)               |
+| `x`   | centerX         | View center X coordinate          |
+| `y`   | centerY         | View center Y coordinate          |
+| `z`   | zoom            | Zoom level                        |
+| `pt`  | paletteType     | Palette type ('c' = cosine, 'g' = gradient) |
+| `cp`  | cosinePalette   | Cosine palette index (0–11)       |
+| `gp`  | gradientPalette | Gradient palette index (0–6)      |
+| `o`   | colorOffset     | Color cycle offset                |
+| `jr`  | juliaReal       | Julia constant real component     |
+| `ji`  | juliaImag       | Julia constant imaginary component|
+| `i`   | iterations      | Max iterations override           |
+| `aa`  | antialiasing    | Antialiasing enabled              |
 
 ### 8. Famous Locations (`src/bookmark/famousLocations.ts`)
 

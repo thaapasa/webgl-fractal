@@ -66,7 +66,8 @@ A static build also lives in [examples/webgpu/](./examples/webgpu/); run `npm ru
 | **j**            | Toggle Julia picker mode               |
 | **+** / **−**    | Increase / decrease iterations         |
 | **0**            | Reset iterations to auto‑scaling       |
-| **c** / **C**    | Cycle color palette forward / backward |
+| **c** / **C**    | Cycle cosine palettes forward / backward |
+| **g** / **G**    | Cycle gradient palettes forward / backward |
 | **,** / **.**    | Shift colors (fine)                    |
 | **<** / **>**    | Shift colors (coarse)                  |
 | **r**            | Reset color offset                     |

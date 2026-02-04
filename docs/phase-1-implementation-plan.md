@@ -31,13 +31,16 @@ All Phase 1 features have been implemented and are working. See [architecture.md
 
 These features were not in the original Phase 1 spec but have been added:
 
-- **Multiple fractal types** — Mandelbrot, Burning Ship, Julia, Burning Ship Julia (cycle with `f`/`F`)
-- **Julia picker mode** — Click on Mandelbrot/Burning Ship to select Julia constant (`j` key)
-- **12 color palettes** (spec called for 1 basic scheme)
+- **Multiple fractal types** — 10 base types (Mandelbrot, Burning Ship, Tricorn, Celtic, Buffalo, Phoenix, Multibrot³, Multibrot⁴, Funky, Perpendicular) each with Julia variant = 20 total (cycle with `f`/`F`)
+- **Julia picker mode** — Click on any base fractal to select Julia constant (`j` key)
+- **19 color palettes** — 12 cosine palettes (`c`/`C`) + 7 gradient palettes (`g`/`G`) (spec called for 1 basic scheme)
 - **Color offset shifting** (not in spec)
 - **Post-process antialiasing** (not in spec)
 - **Auto-scaling iterations** with manual override (not in spec)
 - **Debug overlay** showing fractal type, zoom, iterations, palette, Julia constant (not in spec)
+- **HDR support** with extended tone mapping and adjustable brightness (not in spec)
+- **9 famous locations** accessible via number keys (not in spec)
+- **URL bookmarking** for sharing fractal views (not in spec)
 
 ---
 

@@ -7,20 +7,20 @@ _- Colonel Joe Bishop_
 
 ## Implementation Status
 
-> Last reviewed January 2026
+> Last reviewed February 4, 2026
 
-| Feature                             | Status                                                       |
-|-------------------------------------|--------------------------------------------------------------|
-| Immediate beautiful fractal on load | ✅ Done                                                       |
-| Zooming (mouse, touch, pinch)       | ✅ Done                                                       |
-| Panning (mouse, touch)              | ✅ Done                                                       |
-| Smooth 60 FPS rendering             | ✅ Done                                                       |
-| Color schemes                       | ✅ Done (12 palettes!)                                        |
-| Multiple fractal types              | ✅ Done (Mandelbrot, Burning Ship, Julia, Burning Ship Julia) |
-| Julia sets                          | ✅ Done (with interactive picker mode!)                       |
-| URL bookmarking                     | ✅ Done (shareable links + 9 famous locations)                |
-| Tourist mode                        | 🔲 Not yet                                                   |
-| Offline support                     | 🔲 Not yet                                                   |
+| Feature                             | Status                                                                     |
+|-------------------------------------|----------------------------------------------------------------------------|
+| Immediate beautiful fractal on load | ✅ Done                                                                     |
+| Zooming (mouse, touch, pinch)       | ✅ Done                                                                     |
+| Panning (mouse, touch)              | ✅ Done                                                                     |
+| Smooth 60 FPS rendering             | ✅ Done                                                                     |
+| Color schemes                       | ✅ Done (19 palettes: 12 cosine + 7 gradient!)                              |
+| Multiple fractal types              | ✅ Done (10 base types + Julia variants = 20 total)                         |
+| Julia sets                          | ✅ Done (with interactive picker mode!)                                     |
+| URL bookmarking                     | ✅ Done (shareable links + 9 famous locations)                              |
+| Tourist mode                        | 🔲 Not yet                                                                 |
+| Offline support                     | 🔲 Not yet                                                                 |
 
 ---
 
