@@ -16,7 +16,7 @@ The goal: open the app, see a fractal, drag to pan, scroll to zoom, and fall int
 
 ## For Monkeys Who Want to Run It
 
-**Prerequisites:** [Node.js](https://nodejs.org/) (v18+ recommended) and a WebGPU-capable browser (Chrome 113+, Edge 113+, Firefox Nightly).
+**Prerequisites:** [Node.js](https://nodejs.org/) (v20+ required) and a WebGPU-capable browser (Chrome 113+, Edge 113+, Firefox Nightly).
 
 ```bash
 # Install dependencies
